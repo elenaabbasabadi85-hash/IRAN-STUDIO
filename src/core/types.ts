@@ -1,4 +1,8 @@
 // Shared contract for all three lanes. Change only via a pull request approved by all three.
+// All time values (start, end, estSeconds) are in seconds and may have decimals.
+
+// Lanes: idea, script, editor and writer belong to the Content lane (Alireza); video belongs to
+// the Video lane (Elena); the Platform lane (Mahboubeh) uses all of them for storage and the user interface.
 export type RoleId = 'idea' | 'script' | 'editor' | 'writer' | 'video';
 export type StepStatus = 'empty' | 'working' | 'ready' | 'approved';
 export type EntryPoint = 'idea' | 'raw-video';
@@ -32,7 +36,7 @@ export interface ScriptSection {
 
 export interface Script {
   hooks: string[];
-  chosenHook: number;
+  chosenHook?: number;
   sections: ScriptSection[];
   cta: string;
   edited?: boolean;
