@@ -1,0 +1,57 @@
+name: "گزارش باگ"
+description: "چیزی درست کار نمی‌کند؟ اینجا گزارشش کنید."
+title: "[باگ] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: "چه اتفاقی افتاد؟"
+      description: "کوتاه بنویسید چه چیزی دیدید."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "قدم‌های تکرار باگ"
+      description: "قدم‌به‌قدم بنویسید چه کار کردید تا باگ پیش آمد."
+      placeholder: |
+        1. به صفحهٔ ... رفتم
+        2. روی ... زدم
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "انتظار داشتید چه شود؟"
+      description: "اگر باگ نبود، چه چیزی باید می‌دیدید؟"
+    validations:
+      required: true
+  - type: dropdown
+    id: lane
+    attributes:
+      label: "مسیر کاری"
+      description: "باگ در کدام بخش است؟"
+      options:
+        - "محتوا (علیرضا)"
+        - "ویدیو (النا)"
+        - "پلتفرم (محبوبه)"
+        - "مشترک (src/core)"
+        - "نمی‌دانم"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: "مرورگر و دستگاه"
+      description: "مثلاً Chrome روی ویندوز، یا Safari روی آیفون."
+    validations:
+      required: false
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: "اسکرین‌شات یا پیام خطا"
+      description: "اگر پیام خطا یا تصویری دارید، اینجا بگذارید."
+    validations:
+      required: false
