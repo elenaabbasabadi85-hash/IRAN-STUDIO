@@ -170,9 +170,14 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
           <h1 className="text-2xl font-bold">{strings.title}</h1>
           <p className="text-sm text-[#2B4C7E]">{project.title}</p>
         </div>
-        <Link href="/studio" className="text-sm underline">
-          {strings.backToStudio}
-        </Link>
+        <nav className="flex gap-4 text-sm">
+          <Link href={`/studio/${projectId}/record/upload`} className="underline">
+            {strings.toUpload}
+          </Link>
+          <Link href="/studio" className="underline">
+            {strings.backToStudio}
+          </Link>
+        </nav>
       </header>
 
       {/* Above the camera preview, so the eyes stay close to the lens. */}
