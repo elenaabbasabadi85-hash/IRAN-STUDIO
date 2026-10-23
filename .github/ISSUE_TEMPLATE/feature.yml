@@ -1,0 +1,39 @@
+name: "پیشنهاد قابلیت"
+description: "یک قابلیت تازه پیشنهاد بدهید یا بگویید یک قابلیت موجود چطور بهتر شود."
+title: "[قابلیت] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: "مشکل یا نیاز"
+      description: "این قابلیت چه مشکلی را برای یوتیوبر حل می‌کند؟ الان کجای کار سخت یا ناممکن است؟"
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: "راه‌حل پیشنهادی"
+      description: "به زبان ساده بنویسید چه چیزی باید ساخته یا عوض شود."
+    validations:
+      required: true
+  - type: dropdown
+    id: lane
+    attributes:
+      label: "مسیر کاری"
+      description: "این کار به کدام مسیر مربوط است؟"
+      options:
+        - "محتوا (علیرضا)"
+        - "ویدیو (النا)"
+        - "پلتفرم (محبوبه)"
+        - "مشترک (src/core، تأیید هر سه نفر)"
+        - "نمی‌دانم"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: "توضیحات بیشتر"
+      description: "طرح، اسکرین‌شات، لینک یا هر چیز دیگری که به فهم کار کمک می‌کند."
+    validations:
+      required: false
