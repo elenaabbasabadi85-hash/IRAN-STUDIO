@@ -24,7 +24,7 @@ Only edit files in the current user's lane. If you are not sure which lane the u
 
 - **Content lane (Alireza):** `src/agents`, `prompts`, `src/persian`, `fixtures`, `src/app/studio/[id]/idea`, `src/app/studio/[id]/script`, `src/app/studio/[id]/write`, `src/app/api/agents`, `src/app/api/trends`.
 - **Video lane (Elena):** `src/video`, `src/app/studio/[id]/record`, `src/app/studio/[id]/edit`, `src/app/api/transcribe`, `src/app/lab`.
-- **Platform lane (Mahboubeh):** `src/components`, `src/styles`, `src/storage`, `src/i18n`, `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/pricing`, `src/app/studio/page.tsx`, `src/app/studio/new`, `src/app/studio/[id]/page.tsx`, `src/app/studio/[id]/layout.tsx`, `src/app/studio/[id]/publish`, `.github`, `docs`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `next.config.ts` and the other root config files.
+- **Platform lane (Mahboubeh):** `src/components`, `src/styles`, `src/storage`, `src/i18n`, `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/pricing`, `src/app/ui`, `src/app/studio/page.tsx`, `src/app/studio/new`, `src/app/studio/[id]/page.tsx`, `src/app/studio/[id]/layout.tsx`, `src/app/studio/[id]/publish`, `.github`, `docs`, `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `next.config.ts` and the other root config files.
 - **Shared:** changes to `src/core` need approval from all three. `package.json` and `package-lock.json` may change when anyone installs a package.
 
 ### Git

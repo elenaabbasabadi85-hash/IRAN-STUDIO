@@ -25,6 +25,8 @@
   --ui-text-muted: var(--brand-concrete);
   --ui-primary: var(--brand-signal-red);
   --ui-accent: var(--brand-live-red);
+  /* Muted text on a denim surface: concrete fails there, so Surface uses this cream tint (5.57). */
+  --ui-surface-text-muted: color-mix(in srgb, var(--brand-cream) 80%, var(--brand-denim));
 
   /* Font families. The --font-* variables are set by next/font in the root layout. */
   --family-body: var(--font-vazirmatn), system-ui, sans-serif;
