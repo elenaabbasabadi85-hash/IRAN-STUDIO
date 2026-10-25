@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import type { Project } from '@/core/types';
 import fa from '@/i18n/fa.json';
 import { createProject, listProjects } from '@/storage/db';
+import { sampleChannel } from './new/sampleChannel';
 
 const t = fa.studio;
 
@@ -13,13 +15,7 @@ function demoProject(): Omit<Project, 'id' | 'createdAt' | 'updatedAt'> {
   return {
     title: t.demo.title,
     entry: 'idea',
-    channel: {
-      name: t.demo.channelName,
-      niche: t.demo.niche,
-      audience: t.demo.audience,
-      tone: 'casual',
-      avgLengthMin: 8,
-    },
+    channel: sampleChannel,
     steps: { idea: 'empty', script: 'empty', editor: 'empty', writer: 'empty', video: 'empty' },
   };
 }
@@ -59,16 +55,17 @@ export default function StudioPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{t.title}</h1>
-        <button
-          type="button"
-          onClick={handleCreateDemo}
-          disabled={creating}
-          className="rounded border px-4 py-2 disabled:opacity-50"
-        >
-          {creating ? t.creating : t.createDemo}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          {/* Creating a project is the main job of this page, so it is the one primary button. */}
+          <Button variant="primary" href="/studio/new">
+            {t.newProject}
+          </Button>
+          <Button onClick={handleCreateDemo} loading={creating}>
+            {t.createDemo}
+          </Button>
+        </div>
       </div>
 
       {error && <p role="alert">{error}</p>}
