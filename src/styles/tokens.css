@@ -1,0 +1,82 @@
+/*
+ * Iran Studio design tokens: the only source of colors, fonts, type sizes and motion.
+ * globals.css maps them to Tailwind (bg-navy, text-cream, font-heading, text-h1 ...).
+ */
+
+:root {
+  /* Brand palette */
+  --brand-navy: #041E42;
+  --brand-signal-red: #CD001A;
+  --brand-live-red: #FF2D46;
+  --brand-denim: #2B4C7E;
+  --brand-cream: #F5F1EA;
+  --brand-concrete: #8A8D91;
+
+  /*
+   * Semantic roles. Contrast (WCAG):
+   *   cream on navy 14.69, cream on denim 7.65, cream on signal red 5.17,
+   *   concrete on navy 4.96, live red on navy 4.50 (no opacity: it drops below AA).
+   * Red text on navy is live red only; signal red on navy is 2.84, so it is for
+   * blocks and buttons only. Concrete and live red fail on denim (2.58 and 2.34).
+   */
+  --ui-background: var(--brand-navy);
+  --ui-surface: var(--brand-denim);
+  --ui-text: var(--brand-cream);
+  --ui-text-muted: var(--brand-concrete);
+  --ui-primary: var(--brand-signal-red);
+  --ui-accent: var(--brand-live-red);
+
+  /* Font families. The --font-* variables are set by next/font in the root layout. */
+  --family-body: var(--font-vazirmatn), system-ui, sans-serif;
+  --family-heading: var(--font-estedad), var(--font-vazirmatn), sans-serif;
+  /* Display: Lalezar, at most 4 words. */
+  --family-display: var(--font-lalezar), var(--font-estedad), sans-serif;
+  --family-latin: var(--font-inter), system-ui, sans-serif;
+  --family-latin-display: var(--font-anton), var(--font-inter), sans-serif;
+
+  /* Type scale */
+  --type-display-size: clamp(2.5rem, 1.75rem + 2.5vw, 3.5rem);
+  --type-display-leading: 1.4;
+  --type-h1-size: clamp(3rem, 2.25rem + 2vw, 3.5rem); /* 48px up to 56px */
+  --type-h1-weight: 900;
+  --type-h1-leading: 1.35;
+  --type-h2-size: 2rem;
+  --type-h2-weight: 800;
+  --type-h2-leading: 1.45;
+  --type-h3-size: 1.25rem;
+  --type-h3-weight: 800;
+  --type-h3-leading: 1.6;
+  --type-body-size: 1rem;
+  --type-body-weight: 400;
+  --type-body-leading: 1.8;
+  --type-caption-size: 0.8125rem;
+  --type-caption-weight: 700;
+  --type-caption-leading: 1.7;
+
+  /* Motion */
+  --duration-fast: 200ms;
+  --duration-base: 275ms;
+  --duration-slow: 350ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Diagonal cut: the cut edge meets the bottom edge at --cut-angle. */
+  --cut-angle: 33deg;
+  --cut-size: 1.25rem;
+}
+
+@layer components {
+  /*
+   * Cuts the bottom-left corner (the inline end in RTL). Set --cut-size on the
+   * element to change the size; the angle stays the same.
+   */
+  .cut-diagonal {
+    --cut-rise: calc(var(--cut-size) * tan(var(--cut-angle)));
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 100%,
+      var(--cut-size) 100%,
+      0 calc(100% - var(--cut-rise))
+    );
+  }
+}

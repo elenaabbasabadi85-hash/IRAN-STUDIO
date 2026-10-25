@@ -1,26 +1,96 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* The app is always on navy, so `dark:` styles apply whatever the OS theme is. */
+@custom-variant dark (&);
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-navy: var(--brand-navy);
+  --color-live-red: var(--brand-live-red);
+  --color-denim: var(--brand-denim);
+  --color-cream: var(--brand-cream);
+  --color-concrete: var(--brand-concrete);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-background: var(--ui-background);
+  --color-surface: var(--ui-surface);
+  --color-foreground: var(--ui-text);
+  --color-muted: var(--ui-text-muted);
+  --color-accent: var(--ui-accent);
+  /* Signal red (primary) is not a --color-* so that text-signal-red does not exist; see below. */
+
+  --font-sans: var(--family-body);
+  --font-body: var(--family-body);
+  --font-heading: var(--family-heading);
+  --font-display: var(--family-display);
+  --font-latin: var(--family-latin);
+  --font-latin-display: var(--family-latin-display);
+
+  --text-display: var(--type-display-size);
+  --text-display--line-height: var(--type-display-leading);
+  --text-h1: var(--type-h1-size);
+  --text-h1--line-height: var(--type-h1-leading);
+  --text-h1--font-weight: var(--type-h1-weight);
+  --text-h2: var(--type-h2-size);
+  --text-h2--line-height: var(--type-h2-leading);
+  --text-h2--font-weight: var(--type-h2-weight);
+  --text-h3: var(--type-h3-size);
+  --text-h3--line-height: var(--type-h3-leading);
+  --text-h3--font-weight: var(--type-h3-weight);
+  --text-body: var(--type-body-size);
+  --text-body--line-height: var(--type-body-leading);
+  --text-body--font-weight: var(--type-body-weight);
+  --text-caption: var(--type-caption-size);
+  --text-caption--line-height: var(--type-caption-leading);
+  --text-caption--font-weight: var(--type-caption-weight);
+
+  --ease-brand: var(--motion-ease);
+  --default-transition-duration: var(--duration-base);
+  --default-transition-timing-function: var(--motion-ease);
+
+  --animate-rec: rec-blink 1s steps(1, end) infinite;
+
+  @keyframes rec-blink {
+    50% {
+      opacity: 0;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Signal red is for blocks and buttons only: on navy it is too dark for text (2.84:1). */
+@utility bg-signal-red {
+  background-color: var(--brand-signal-red);
+}
+
+@utility bg-primary {
+  background-color: var(--ui-primary);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--family-heading);
+  }
+
+  h1 {
+    font-size: var(--type-h1-size);
+    font-weight: var(--type-h1-weight);
+    line-height: var(--type-h1-leading);
+  }
+
+  h2 {
+    font-size: var(--type-h2-size);
+    font-weight: var(--type-h2-weight);
+    line-height: var(--type-h2-leading);
+  }
+
+  h3 {
+    font-size: var(--type-h3-size);
+    font-weight: var(--type-h3-weight);
+    line-height: var(--type-h3-leading);
+  }
 }
