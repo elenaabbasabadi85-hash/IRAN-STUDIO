@@ -45,6 +45,7 @@ Only edit files in the current user's lane. If you are not sure which lane the u
 
 - The whole interface is right-to-left.
 - All user-facing text comes from `src/i18n/fa.json`.
+- Persian spelling follows the brand guide: after «ه», write the ezafe as «ه‌ی», with a zero-width non-joiner (U+200C) before «ی». Never use «هٔ» or «ۀ». Examples: «آماده‌ی انتشار», «صفحه‌ی اصلی», «همه‌ی متن‌ها».
 - Colors and fonts come only from `src/styles/tokens.css`.
 - Brand colors: deep navy `#041E42`, signal red `#CD001A`, live red `#FF2D46` (only on navy), denim blue `#2B4C7E`, bone cream `#F5F1EA`, concrete gray `#8A8D91`.
 - Fonts: Vazirmatn (body), Estedad (headings), Lalezar (display).
