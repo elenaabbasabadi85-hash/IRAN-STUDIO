@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { focusRing } from '@/components/ui/focus';
 import type { Project } from '@/core/types';
@@ -53,6 +53,20 @@ export function NewProjectForm() {
   const [submitted, setSubmitted] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(false);
+  const resetWhenHidden = useRef(false);
+
+  // Next keeps this page mounted but hidden after navigating away (Activity). Once a project
+  // is created, start fresh next time; a draft the user left without submitting is kept.
+  useLayoutEffect(() => {
+    return () => {
+      if (!resetWhenHidden.current) return;
+      resetWhenHidden.current = false;
+      setValues(emptyValues);
+      setErrors({});
+      setSubmitted(false);
+      setCreating(false);
+    };
+  }, []);
 
   // After the first submit, errors follow the values as the user fixes them.
   function change(next: NewProjectValues) {
@@ -99,6 +113,7 @@ export function NewProjectForm() {
     setCreating(true);
     try {
       const project = await createProject({ ...result.project, steps: emptySteps });
+      resetWhenHidden.current = true;
       // The idea page is not built yet, so an idea project opens its own page.
       router.push(project.entry === 'raw-video' ? `/studio/${project.id}/record/upload` : `/studio/${project.id}`);
     } catch {
