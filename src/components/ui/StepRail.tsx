@@ -7,8 +7,8 @@ import { RecDot } from './RecDot';
 
 export type StepId = RoleId | 'record' | 'publish';
 
-// The project from idea to publish. The first step sits on the right (RTL).
-export const STEP_ORDER: readonly StepId[] = ['idea', 'script', 'editor', 'record', 'video', 'writer', 'publish'];
+// The project from idea to publish, in the brand guide's order. The first step sits on the right (RTL).
+export const STEP_ORDER: readonly StepId[] = ['idea', 'script', 'writer', 'editor', 'record', 'video', 'publish'];
 
 export function stepName(step: StepId): string {
   return step === 'record' || step === 'publish' ? fa.steps[step] : fa.roles[step].title;

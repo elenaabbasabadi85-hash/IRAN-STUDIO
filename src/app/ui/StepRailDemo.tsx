@@ -10,6 +10,7 @@ import { format } from '@/i18n/format';
 const statuses: Partial<Record<StepId, StepStatus>> = {
   idea: 'approved',
   script: 'approved',
+  writer: 'approved',
   editor: 'ready',
   record: 'working',
 };

@@ -26,9 +26,9 @@ const statuses = ['empty', 'working', 'ready', 'approved'] as const satisfies re
 const roleCards: { role: RoleId; status: StepStatus }[] = [
   { role: 'idea', status: 'approved' },
   { role: 'script', status: 'ready' },
-  { role: 'editor', status: 'working' },
+  { role: 'writer', status: 'working' },
+  { role: 'editor', status: 'empty' },
   { role: 'video', status: 'empty' },
-  { role: 'writer', status: 'empty' },
 ];
 
 // Showcase of every UI component and state, for reviewing the brand components.
