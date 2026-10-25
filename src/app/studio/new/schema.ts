@@ -97,7 +97,18 @@ export function parseNewProject(values: NewProjectValues): NewProjectResult {
     return { success: false, errors };
   }
 
-  const { entry, title, channel } = result.data;
+  const { entry, title, channel: parsed } = result.data;
+  // Optional fields left empty are left out, not stored as undefined.
+  const channel: ChannelProfile = {
+    name: parsed.name,
+    niche: parsed.niche,
+    audience: parsed.audience,
+    tone: parsed.tone,
+    avgLengthMin: parsed.avgLengthMin,
+  };
+  if (parsed.sampleText) channel.sampleText = parsed.sampleText;
+  if (parsed.colors) channel.colors = parsed.colors;
+
   return {
     success: true,
     project: { entry, channel, title: title || format(fa.studio.new.defaultTitle, { name: channel.name }) },
