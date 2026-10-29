@@ -23,7 +23,8 @@ export default function Home() {
 
       <section className="flex flex-col items-start gap-6">
         <h1>{t.name}</h1>
-        <p className="cut-diagonal bg-signal-red px-6 pt-2 pb-3 font-display text-display text-cream [--cut-size:1.75rem]">
+        <p className="cut-edge px-6 pt-2 pb-3 pe-12 font-display text-display text-cream">
+          <span aria-hidden="true" className="cut-fill bg-signal-red" />
           {t.slogan}
         </p>
         <p className="max-w-xl">{t.intro}</p>

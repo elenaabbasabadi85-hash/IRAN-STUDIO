@@ -49,7 +49,7 @@ Only edit files in the current user's lane. If you are not sure which lane the u
 - Colors and fonts come only from `src/styles/tokens.css`.
 - Brand colors: deep navy `#041E42`, signal red `#CD001A`, live red `#FF2D46` (only on navy), denim blue `#2B4C7E`, bone cream `#F5F1EA`, concrete gray `#8A8D91`.
 - Fonts: Vazirmatn (body), Estedad (headings), Lalezar (display).
-- Only one red primary button per page, with a 33-degree cut edge.
+- Only one red primary button per page. Its left edge is slanted at the brand angle, `--cut-angle` in `src/styles/tokens.css` (the only place it is set).
 
 ### Demo mode
 
