@@ -38,7 +38,7 @@ export default function UiShowcasePage() {
       <header className="flex flex-col items-start gap-4">
         <p dir="ltr" className="flex items-center gap-2 font-latin-display text-lg tracking-widest text-accent">
           <RecDot blinking />
-          {fa.home.rec}
+          {fa.landing.rec}
         </p>
         <h1>{t.title}</h1>
         <p className="max-w-2xl">{t.intro}</p>

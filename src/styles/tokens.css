@@ -61,24 +61,31 @@
   --duration-slow: 350ms;
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
 
-  /* Diagonal cut: the cut edge meets the bottom edge at --cut-angle. */
-  --cut-angle: 33deg;
-  --cut-size: 1.25rem;
+  /*
+   * Diagonal cut: the slanted left edge (the inline end in RTL) meets the bottom edge at
+   * --cut-angle. 79deg is measured from the primary buttons in brand guide 1.1, chapter 05.
+   * This is the only place the angle is set; every cut follows it.
+   */
+  --cut-angle: 79deg;
 }
 
 @layer components {
   /*
-   * Cuts the bottom-left corner (the inline end in RTL). Set --cut-size on the
-   * element to change the size; the angle stays the same.
+   * Slants the whole left edge at --cut-angle, at any height. The background goes on a child
+   * with .cut-fill, not on the element: the fill is skewed from its bottom-left corner and the
+   * element clips it, so the right edge stays straight. The element's own outline is not clipped.
    */
-  .cut-diagonal {
-    --cut-rise: calc(var(--cut-size) * tan(var(--cut-angle)));
-    clip-path: polygon(
-      0 0,
-      100% 0,
-      100% 100%,
-      var(--cut-size) 100%,
-      0 calc(100% - var(--cut-rise))
-    );
+  .cut-edge {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .cut-edge > .cut-fill {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transform-origin: bottom left;
+    transform: skewX(calc(var(--cut-angle) - 90deg));
   }
 }
