@@ -22,11 +22,15 @@ interface StepRailProps {
   hrefs?: Partial<Record<StepId, string>>;
   /** Button mode, for Client Components: each step becomes a button. */
   onSelect?: (step: StepId) => void;
+  /** Accessible name; defaults to "مراحل پروژه". Give each rail its own when a page shows several. */
+  label?: string;
   className?: string;
 }
 
 // For navy backgrounds. On small screens only the markers show and the current step is named below.
-export function StepRail({ statuses, current, hrefs, onSelect, className = '' }: StepRailProps) {
+// With links or buttons it is a navigation landmark; without them it only shows statuses, so it is a group.
+export function StepRail({ statuses, current, hrefs, onSelect, label = fa.steps.rail, className = '' }: StepRailProps) {
+  const Wrapper = hrefs || onSelect ? 'nav' : 'div';
   const statusOf = (step: StepId): StepStatus => statuses[step] ?? 'empty';
   const details = (step: StepId, template: string) =>
     format(template, {
@@ -37,7 +41,7 @@ export function StepRail({ statuses, current, hrefs, onSelect, className = '' }:
     });
 
   return (
-    <nav aria-label={fa.steps.rail} className={className}>
+    <Wrapper role={Wrapper === 'div' ? 'group' : undefined} aria-label={label} className={className}>
       <ol className="flex">
         {STEP_ORDER.map((step, index) => {
           const status = statusOf(step);
@@ -92,7 +96,7 @@ export function StepRail({ statuses, current, hrefs, onSelect, className = '' }:
           {details(current, fa.steps.current)}
         </p>
       )}
-    </nav>
+    </Wrapper>
   );
 }
 
