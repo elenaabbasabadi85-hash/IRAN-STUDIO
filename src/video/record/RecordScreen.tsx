@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
 import type { Project } from '@/core/types';
 import { getBlob, getProject } from '@/storage/db';
 import { isQuotaError, saveRawVideo } from '../saveRawVideo';
@@ -20,9 +21,6 @@ type LoadState =
 
 // url is null when the stored blob could not be read.
 type StoredVideo = { key: string; url: string | null };
-
-// 48px tall button, so the slanted edge is 48 * tan(33°) ≈ 31px wide.
-const CUT_EDGE = 'polygon(0 0, 100% 0, 100% 100%, 31px 100%)';
 
 const secondaryButton =
   'h-12 rounded border border-[#041E42] px-5 font-bold text-[#041E42] disabled:opacity-40';
@@ -291,15 +289,9 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
       {phase !== 'stopped' && (
         <div className="flex flex-wrap items-center gap-3">
           {phase === 'idle' && (
-            <button
-              type="button"
-              onClick={handleStart}
-              disabled={!devices.stream}
-              className="h-12 bg-[#CD001A] pe-10 ps-6 font-bold text-white disabled:opacity-40"
-              style={{ clipPath: CUT_EDGE }}
-            >
+            <Button variant="primary" onClick={handleStart} disabled={!devices.stream}>
               {strings.recorder.start}
-            </button>
+            </Button>
           )}
           {phase === 'countdown' && (
             <button type="button" onClick={recorder.cancelCountdown} className={secondaryButton}>

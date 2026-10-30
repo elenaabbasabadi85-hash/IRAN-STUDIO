@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import type { CutSegment, MediaState, Project } from "@/core/types";
 import { getBlob, getProject } from "@/storage/db";
 import {
@@ -359,14 +360,15 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
           onChange={(padding) => changeOptions({ ...options, padding })}
         />
         <p className="text-sm text-foreground/70">{t.settings.hint}</p>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => changeOptions(DEFAULT_SILENCE_OPTIONS)}
           disabled={busy}
-          className="w-fit rounded-lg border border-foreground/30 px-4 py-1.5 text-sm disabled:opacity-40"
+          className="w-fit"
         >
           {t.settings.reset}
-        </button>
+        </Button>
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-foreground/15 p-4">
@@ -413,14 +415,9 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
           </ul>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void persistCuts()}
-            disabled={busy || !dirty}
-            className="rounded-lg border border-foreground/30 px-5 py-2 font-medium disabled:opacity-40"
-          >
+          <Button variant="secondary" onClick={() => void persistCuts()} disabled={busy || !dirty}>
             {t.saveCuts}
-          </button>
+          </Button>
           {dirty && cutsStatus !== "error" && <span className="text-sm text-foreground/70">{t.unsaved}</span>}
           {cutsStatus === "saved" && !dirty && (
             <span className="text-sm" aria-live="polite">
@@ -443,22 +440,13 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
           </p>
         )}
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void exportVideo()}
-            disabled={busy || allCuts.length === 0}
-            className="rounded-lg bg-foreground px-5 py-2 font-medium text-background disabled:opacity-40"
-          >
+          <Button variant="primary" onClick={() => void exportVideo()} disabled={busy || allCuts.length === 0}>
             {t.export.start}
-          </button>
+          </Button>
           {exportStatus.kind === "running" && (
-            <button
-              type="button"
-              onClick={() => abortRef.current?.abort()}
-              className="rounded-lg border border-foreground/30 px-5 py-2 font-medium"
-            >
+            <Button variant="secondary" onClick={() => abortRef.current?.abort()}>
               {t.export.cancel}
-            </button>
+            </Button>
           )}
         </div>
         <ExportLine status={exportStatus} />

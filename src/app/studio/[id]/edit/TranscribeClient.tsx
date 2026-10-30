@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import type { Project, Transcript } from "@/core/types";
 import { getBlob, getProject } from "@/storage/db";
 import { saveTranscript } from "@/video/transcribe/saveTranscript";
@@ -171,22 +172,13 @@ export default function TranscribeClient({ projectId }: { projectId: string }) {
         )}
 
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={start}
-            disabled={!canStart}
-            className="rounded-lg bg-foreground px-5 py-2 font-medium text-background disabled:opacity-40"
-          >
+          <Button variant="primary" onClick={start} disabled={!canStart}>
             {status.kind === "error" ? t.retry : shown ? t.restart : t.start}
-          </button>
+          </Button>
           {status.kind === "running" && (
-            <button
-              type="button"
-              onClick={() => abortRef.current?.abort()}
-              className="rounded-lg border border-foreground/30 px-5 py-2 font-medium"
-            >
+            <Button variant="secondary" onClick={() => abortRef.current?.abort()}>
               {t.cancel}
-            </button>
+            </Button>
           )}
         </div>
 

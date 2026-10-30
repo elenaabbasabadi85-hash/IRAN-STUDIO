@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react';
+import { Button } from '@/components/ui/Button';
 import type { Project } from '@/core/types';
 import { getBlob, getProject } from '@/storage/db';
 import { formatBytes, formatDuration } from '../record/mime';
@@ -24,9 +25,6 @@ type StoredVideo = { key: string; url: string | null };
 type StorageEstimate = { usage: number; quota: number };
 
 type Notice = 'saved' | 'deleted';
-
-// 48px tall button, so the slanted edge is 48 * tan(33°) ≈ 31px wide.
-const CUT_EDGE = 'polygon(0 0, 100% 0, 100% 100%, 31px 100%)';
 
 const secondaryButton =
   'h-12 rounded border border-[#041E42] px-5 font-bold text-[#041E42] disabled:opacity-40';
@@ -337,15 +335,9 @@ export default function UploadScreen({ projectId }: { projectId: string }) {
             </dd>
           </dl>
           <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={busy}
-              className="h-12 bg-[#CD001A] pe-10 ps-6 font-bold text-white disabled:opacity-40"
-              style={{ clipPath: CUT_EDGE }}
-            >
+            <Button variant="primary" onClick={handleSave} disabled={busy}>
               {saving ? strings.saving : strings.save}
-            </button>
+            </Button>
             <button type="button" onClick={clearSelection} disabled={busy} className={secondaryButton}>
               {strings.chooseAnother}
             </button>
