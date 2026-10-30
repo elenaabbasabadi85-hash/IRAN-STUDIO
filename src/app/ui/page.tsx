@@ -8,6 +8,7 @@ import { RoleCard } from '@/components/ui/RoleCard';
 import { Surface } from '@/components/ui/Surface';
 import type { RoleId, StepStatus } from '@/core/types';
 import fa from '@/i18n/fa.json';
+import { ConfirmDialogDemo } from './ConfirmDialogDemo';
 import { PrimaryButtonDemo } from './PrimaryButtonDemo';
 import { StepRailDemo } from './StepRailDemo';
 
@@ -152,6 +153,10 @@ export default function UiShowcasePage() {
 
       <Section id="step-rail" title={t.stepRail.title} description={t.stepRail.description}>
         <StepRailDemo />
+      </Section>
+
+      <Section id="confirm-dialog" title={t.confirmDialog.title} description={t.confirmDialog.description}>
+        <ConfirmDialogDemo />
       </Section>
     </main>
   );
