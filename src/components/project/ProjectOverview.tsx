@@ -61,6 +61,7 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
   const hrefs: Partial<Record<StepId, string>> = {
     record: `/studio/${project.id}/record`,
     video: `/studio/${project.id}/edit`,
+    publish: `/studio/${project.id}/publish`,
   };
   const fromIdea = project.entry === 'idea';
 
