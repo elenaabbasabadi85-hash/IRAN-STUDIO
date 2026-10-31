@@ -256,12 +256,14 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
 
   /** Returns false when saving failed (the error is already shown). */
   async function persistCuts(): Promise<boolean> {
+    // "Saved" is shown only when the user had unsaved changes, not for a save before export.
+    const announce = dirty;
     setCutsStatus("saving");
     try {
       await saveSilenceCuts(project.id, enabledCuts);
       await refresh();
       setDirty(false);
-      setCutsStatus("saved");
+      setCutsStatus(announce ? "saved" : "idle");
       return true;
     } catch {
       setCutsStatus("error");
@@ -272,7 +274,8 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
   async function exportVideo() {
     if (busy || !media?.rawVideoKey) return;
     if (bigVideo && !window.confirm(t.export.memoryConfirm)) return;
-    if (dirty && !(await persistCuts())) return;
+    // Always saved first: freshly detected cuts are not dirty, but subtitles need them to match the video.
+    if (!(await persistCuts())) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -461,6 +464,11 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
         )}
         {outputsCount > 0 && (
           <p className="text-sm text-foreground/70">{fill(t.export.outputsCount, { count: int.format(outputsCount) })}</p>
+        )}
+        {(exportStatus.kind === "saved" || outputsCount > 0) && (
+          <Button variant="secondary" href={`/studio/${project.id}/edit/subtitles`} className="w-fit">
+            {t.export.goToSubtitles}
+          </Button>
         )}
       </section>
     </main>
