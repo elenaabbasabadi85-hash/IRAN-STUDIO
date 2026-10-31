@@ -1,5 +1,5 @@
 name: "گزارش باگ"
-description: "چیزی درست کار نمی‌کند؟ اینجا گزارشش کنید."
+description: "چیزی درست کار نمی‌کند؟ اینجا گزارشش کن."
 title: "[باگ] "
 labels: ["bug"]
 body:
@@ -7,16 +7,16 @@ body:
     id: what-happened
     attributes:
       label: "چه اتفاقی افتاد؟"
-      description: "کوتاه بنویسید چه چیزی دیدید."
+      description: "کوتاه بنویس چه چیزی دیدی."
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
       label: "قدم‌های تکرار باگ"
-      description: "قدم‌به‌قدم بنویسید چه کار کردید تا باگ پیش آمد."
+      description: "قدم‌به‌قدم بنویس چه کار کردی تا باگ پیش آمد."
       placeholder: |
-        1. به صفحهٔ ... رفتم
+        1. به صفحه‌ی ... رفتم
         2. روی ... زدم
         3. ...
     validations:
@@ -24,8 +24,8 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: "انتظار داشتید چه شود؟"
-      description: "اگر باگ نبود، چه چیزی باید می‌دیدید؟"
+      label: "انتظار داشتی چه شود؟"
+      description: "اگر باگ نبود، چه چیزی باید می‌دیدی؟"
     validations:
       required: true
   - type: dropdown
@@ -52,6 +52,6 @@ body:
     id: screenshot
     attributes:
       label: "اسکرین‌شات یا پیام خطا"
-      description: "اگر پیام خطا یا تصویری دارید، اینجا بگذارید."
+      description: "اگر پیام خطا یا تصویری داری، اینجا بگذار."
     validations:
       required: false
