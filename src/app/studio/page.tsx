@@ -171,9 +171,14 @@ export default function StudioPage() {
                 </div>
                 <div className="relative z-30 flex flex-wrap items-center gap-3">
                   <Badge tone="outline">{t.project.entry[project.entry]}</Badge>
-                  <Button variant="ghost" size="sm" onClick={() => askToDelete(project)}>
+                  {/* The name starts with the visible «پاکش کن» and adds which project it deletes. */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={format(t.list.deleteLabel, { title: project.title })}
+                    onClick={() => askToDelete(project)}
+                  >
                     {t.list.delete}
-                    <span className="sr-only"> {project.title}</span>
                   </Button>
                 </div>
               </div>
