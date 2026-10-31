@@ -123,7 +123,7 @@ export default function StudioPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8 sm:px-8 sm:py-12">
+    <main className="mx-auto flex w-full text-pretty max-w-5xl flex-1 flex-col gap-8 px-4 py-8 sm:px-8 sm:py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 ref={heading} tabIndex={-1} className={focusRing}>
           {t.title}
@@ -171,9 +171,14 @@ export default function StudioPage() {
                 </div>
                 <div className="relative z-30 flex flex-wrap items-center gap-3">
                   <Badge tone="outline">{t.project.entry[project.entry]}</Badge>
-                  <Button variant="ghost" size="sm" onClick={() => askToDelete(project)}>
+                  {/* The name starts with the visible «پاکش کن» and adds which project it deletes. */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={format(t.list.deleteLabel, { title: project.title })}
+                    onClick={() => askToDelete(project)}
+                  >
                     {t.list.delete}
-                    <span className="sr-only"> {project.title}</span>
                   </Button>
                 </div>
               </div>

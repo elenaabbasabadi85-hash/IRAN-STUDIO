@@ -136,7 +136,7 @@ function CopyButton({ name, copied, onCopy }: { name: string; copied: boolean; o
   return (
     <Button variant="secondary" size="sm" onClick={onCopy}>
       {copied ? t.copy.done : t.copy.button}
-      <span className="sr-only"> {name}</span>
+      <span className="sr-only">: {name}</span>
     </Button>
   );
 }

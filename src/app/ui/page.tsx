@@ -35,7 +35,7 @@ const roleCards: { role: RoleId; status: StepStatus }[] = [
 // Showcase of every UI component and state, for reviewing the brand components.
 export default function UiShowcasePage() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-16 px-4 py-8 sm:px-8 sm:py-12">
+    <main className="mx-auto flex w-full text-pretty max-w-5xl flex-1 flex-col gap-16 px-4 py-8 sm:px-8 sm:py-12">
       <header className="flex flex-col items-start gap-4">
         <p dir="ltr" className="flex items-center gap-2 font-latin-display text-lg tracking-widest text-accent">
           <RecDot blinking />
