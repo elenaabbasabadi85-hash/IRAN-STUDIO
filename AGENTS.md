@@ -44,7 +44,10 @@ Only edit files in the current user's lane. If you are not sure which lane the u
 ### UI
 
 - The whole interface is right-to-left.
-- All user-facing text comes from `src/i18n/fa.json`.
+- All user-facing text comes from Persian JSON text files, never written inline in components. Each lane keeps its own text files in its own folders, and a new page's text goes in its lane's file:
+  - Platform: `src/i18n/fa.json`.
+  - Video: a `strings.fa.json` in each feature folder of `src/video`, such as `src/video/record/strings.fa.json`.
+  - Content: `src/agents/strings.fa.json`.
 - Persian spelling follows the brand guide: after «ه», write the ezafe as «ه‌ی», with a zero-width non-joiner (U+200C) before «ی». Never use «هٔ» or «ۀ». Examples: «آماده‌ی انتشار», «صفحه‌ی اصلی», «همه‌ی متن‌ها».
 - Colors and fonts come only from `src/styles/tokens.css`.
 - Brand colors: deep navy `#041E42`, signal red `#CD001A`, live red `#FF2D46` (only on navy), denim blue `#2B4C7E`, bone cream `#F5F1EA`, concrete gray `#8A8D91`.
