@@ -50,6 +50,7 @@ Only edit files in the current user's lane. If you are not sure which lane the u
   - Content: `src/agents/strings.fa.json`.
   - Next to a page: a `strings.fa.json` in the page's own folder, in its lane, such as `src/app/studio/[id]/idea/strings.fa.json` (Content).
 - Persian spelling follows the brand guide: after «ه», write the ezafe as «ه‌ی», with a zero-width non-joiner (U+200C) before «ی». Never use «هٔ» or «ۀ». Examples: «آماده‌ی انتشار», «صفحه‌ی اصلی», «همه‌ی متن‌ها».
+- Button labels are commands, like the brand guide's «اشتراک بگیر» and «پلتفرم رو ببین»: write «پروژه رو بساز», not «ساخت پروژه». A link that only takes the user back to another page is named after that page, such as «همه‌ی پروژه‌ها».
 - Colors and fonts come only from `src/styles/tokens.css`.
 - Brand colors: deep navy `#041E42`, signal red `#CD001A`, live red `#FF2D46` (only on navy), denim blue `#2B4C7E`, bone cream `#F5F1EA`, concrete gray `#8A8D91`.
 - Fonts: Vazirmatn (body), Estedad (headings), Lalezar (display).
