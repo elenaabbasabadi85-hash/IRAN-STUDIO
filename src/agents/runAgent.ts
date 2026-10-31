@@ -10,6 +10,7 @@ import { extractJson } from "@/agents/extractJson";
 import { MODELS } from "@/agents/models.config";
 import { callOpenRouter, type ChatError, type ChatMessage } from "@/agents/openrouter";
 import { agentSchemas, type AgentOutput, type AgentRole } from "@/agents/schemas";
+import ideaFixture from "../../fixtures/idea.json";
 import testFixture from "../../fixtures/test.json";
 
 // Each readFile gets its literal path right in the call, never built from the role string, so
@@ -17,11 +18,13 @@ import testFixture from "../../fixtures/test.json";
 // (readFile(map[role]) would look dynamic to Turbopack and trace the whole project instead.)
 const PROMPTS = {
   test: () => readFile(path.join(process.cwd(), "prompts", "test.md"), "utf8"),
+  idea: () => readFile(path.join(process.cwd(), "prompts", "idea.md"), "utf8"),
 } satisfies Record<AgentRole, () => Promise<string>>;
 
 // Imported, not read from disk, so the samples are bundled like fixtures/transcript.json.
 const FIXTURES = {
   test: testFixture,
+  idea: ideaFixture,
 } satisfies Record<AgentRole, unknown>;
 
 /** Stays under the route's maxDuration (60 s) with room to send the response. */
@@ -47,7 +50,9 @@ function buildSystemPrompt(rolePrompt: string, channel: ChannelProfile, schema: 
     JSON.stringify(channel, null, 2),
     "## قالب پاسخ",
     "فقط یک JSON معتبر برگردان، بدون توضیح، بدون Markdown و بدون هیچ متن دیگری. شکل آن باید با این JSON Schema بخواند:",
-    JSON.stringify(z.toJSONSchema(schema)),
+    // io: "input" یعنی شکل چیزی که مدل می‌فرستد، نه خروجی بعد از transform (مثل idهایی که کد می‌سازد).
+    // در حالت پیش‌فرض، Zod 4 برای transform خطا می‌دهد، چون JSON Schema نمی‌تواند آن را نشان دهد.
+    JSON.stringify(z.toJSONSchema(schema, { io: "input" })),
   ].join("\n\n");
 }
 
