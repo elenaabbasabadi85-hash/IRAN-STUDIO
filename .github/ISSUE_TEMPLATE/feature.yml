@@ -1,5 +1,5 @@
 name: "پیشنهاد قابلیت"
-description: "یک قابلیت تازه پیشنهاد بدهید یا بگویید یک قابلیت موجود چطور بهتر شود."
+description: "یک قابلیت تازه پیشنهاد بده یا بگو یک قابلیت موجود چطور بهتر شود."
 title: "[قابلیت] "
 labels: ["enhancement"]
 body:
@@ -14,7 +14,7 @@ body:
     id: solution
     attributes:
       label: "راه‌حل پیشنهادی"
-      description: "به زبان ساده بنویسید چه چیزی باید ساخته یا عوض شود."
+      description: "به زبان ساده بنویس چه چیزی باید ساخته یا عوض شود."
     validations:
       required: true
   - type: dropdown
