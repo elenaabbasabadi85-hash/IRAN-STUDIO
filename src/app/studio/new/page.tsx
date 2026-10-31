@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 // Starting point and channel profile of a new project. The project is saved in the browser.
 export default function NewProjectPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-8 sm:py-12">
+    <main className="mx-auto flex w-full text-pretty max-w-3xl flex-1 flex-col px-4 py-8 sm:px-8 sm:py-12">
       <NewProjectForm />
     </main>
   );

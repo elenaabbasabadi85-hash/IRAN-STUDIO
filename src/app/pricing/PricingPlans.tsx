@@ -65,12 +65,14 @@ interface PlanCardProps {
 
 // One plan, after the subscription card of the brand guide: navy card, REC dot, price, features,
 // and for the recommended plan the corner ribbon and the red button.
+// Its five parts sit on the list's rows (subgrid), so prices and buttons line up across the cards
+// even when one description takes two lines.
 function PlanCard({ plan, activated, onSubscribe }: PlanCardProps) {
   const nameId = useId();
   const { name, text } = t.plans[plan.id];
 
   return (
-    <li className="relative flex flex-col gap-6 overflow-hidden bg-navy p-6 ring-1 ring-denim ring-inset sm:p-8">
+    <li className="relative row-span-5 grid grid-rows-subgrid gap-6 overflow-hidden bg-navy p-6 ring-1 ring-denim ring-inset sm:p-8">
       {plan.recommended && (
         <span className="absolute top-5 -left-11 w-40 -rotate-45 bg-signal-red py-1 text-center text-caption text-cream">
           {t.recommended}
