@@ -1,43 +1,60 @@
 import type { Metadata } from "next";
-import { Anton, Estedad, Inter, Lalezar, Vazirmatn } from "next/font/google";
+import localFont from "next/font/local";
 import fa from "@/i18n/fa.json";
 import "./globals.css";
 
+// The brand fonts are served from the project (src/styles/fonts, with their licenses), so the
+// build never fetches from Google. The files are the versions Google Fonts serves.
+//
+// The variable fonts are declared at the same single weights Google Fonts declared, not as a
+// 100–900 range: other weights (font-medium, font-semibold) keep snapping to the nearest one.
+// next/font reads these options at build time, so they stay written out as literals.
+
 // Body and UI. Preloaded: almost every page shows it above the fold.
-const vazirmatn = Vazirmatn({
+const vazirmatn = localFont({
+  src: [
+    { path: "../styles/fonts/vazirmatn/Vazirmatn-Variable.woff2", weight: "400" },
+    { path: "../styles/fonts/vazirmatn/Vazirmatn-Variable.woff2", weight: "700" },
+  ],
   variable: "--font-vazirmatn",
-  subsets: ["arabic"],
-  weight: ["400", "700"],
+  display: "swap",
 });
 
-// Headings. Next has no fallback metrics for Estedad, so the build warns
-// "Failed to find font override values"; tokens.css falls back to Vazirmatn.
-const estedad = Estedad({
+// Headings.
+const estedad = localFont({
+  src: [
+    { path: "../styles/fonts/estedad/Estedad-Variable.woff2", weight: "800" },
+    { path: "../styles/fonts/estedad/Estedad-Variable.woff2", weight: "900" },
+  ],
   variable: "--font-estedad",
-  subsets: ["arabic"],
-  weight: ["800", "900"],
+  display: "swap",
 });
 
 // Display, used sparingly, so it is not preloaded on every page.
-const lalezar = Lalezar({
+const lalezar = localFont({
+  src: "../styles/fonts/lalezar/Lalezar-Regular.woff2",
   variable: "--font-lalezar",
-  subsets: ["arabic"],
   weight: "400",
+  display: "swap",
   preload: false,
 });
 
 // Latin text and Latin display.
-const inter = Inter({
+const inter = localFont({
+  src: [
+    { path: "../styles/fonts/inter/Inter-Variable.woff2", weight: "400" },
+    { path: "../styles/fonts/inter/Inter-Variable.woff2", weight: "700" },
+  ],
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "700"],
+  display: "swap",
   preload: false,
 });
 
-const anton = Anton({
+const anton = localFont({
+  src: "../styles/fonts/anton/Anton-Regular.woff2",
   variable: "--font-anton",
-  subsets: ["latin"],
   weight: "400",
+  display: "swap",
   preload: false,
 });
 
