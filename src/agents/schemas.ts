@@ -52,7 +52,7 @@ export const testOutputSchema = z.object({
 const IDEA_COUNT = 5;
 // کمی دست‌ودل‌باز، تا جوابی که از یک مدل رایگان کمی بلند درآمده کل پاسخ را رد نکند و یک تلاش دوباره
 // هزینه نکند؛ فقط جلوی پرحرفی واقعی را می‌گیرند.
-const IDEA_LIMITS = {
+export const IDEA_LIMITS = {
   workingTitle: 60,
   angle: 250,
   whyItWorks: 400,
@@ -61,7 +61,8 @@ const IDEA_LIMITS = {
 
 // چیزی که مدل می‌فرستد: بدون id و بدون references. مدل یوتیوب را نمی‌بیند، پس هر لینک یا عدد
 // بازدیدی که بدهد ساختگی است؛ references در IdeaCard اختیاری است و نبودنش قرارداد را نمی‌شکند.
-const ideaDraftSchema = z.object({
+// صفحه‌ی ایده هم ایده‌ی ویرایش‌شده را پیش از ذخیره با همین اسکیما می‌سنجد.
+export const ideaDraftSchema = z.object({
   workingTitle: text(IDEA_LIMITS.workingTitle),
   angle: text(IDEA_LIMITS.angle),
   whyItWorks: text(IDEA_LIMITS.whyItWorks),
