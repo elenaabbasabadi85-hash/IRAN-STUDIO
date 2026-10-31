@@ -102,7 +102,8 @@ export default function SubtitlesClient({ projectId }: { projectId: string }) {
     const url = URL.createObjectURL(srtBlob(text));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${project.title || t.fileFallback}.srt`;
+    const title = project.title.split(String.fromCharCode(0x200c)).join(" ");
+    link.download = `${title || t.fileFallback}.srt`;
     link.click();
     // Revoked a moment later: some browsers start the download only after click() returns.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -127,7 +128,7 @@ export default function SubtitlesClient({ projectId }: { projectId: string }) {
               })}
             </p>
             {kept && <p className="text-sm text-foreground/70">{t.cutsNote}</p>}
-            <pre dir="auto" className="max-h-96 overflow-y-auto rounded-lg bg-foreground/5 p-3 text-sm leading-7 whitespace-pre-wrap">
+            <pre dir="auto" className="max-h-96 overflow-y-auto rounded-lg bg-foreground/5 p-3 font-body text-sm leading-7 whitespace-pre-wrap">
               {text}
             </pre>
           </section>
