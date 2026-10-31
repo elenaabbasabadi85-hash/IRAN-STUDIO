@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 // Sample subscription plans with a demo purchase; there is no real payment.
 export default function PricingPage() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-8 sm:px-8 sm:py-14">
+    <main className="mx-auto flex w-full text-pretty max-w-6xl flex-1 flex-col gap-10 px-4 py-8 sm:px-8 sm:py-14">
       <header className="flex flex-col items-start gap-4">
         <Button variant="ghost" size="sm" href="/" className="-ms-4">
           {t.back}

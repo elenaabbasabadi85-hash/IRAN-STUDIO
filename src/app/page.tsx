@@ -12,7 +12,7 @@ const stepNumber = (n: number) => formatNumber(n).padStart(2, '۰');
 // button (start a project) and a side path to the subscription page, then the workflow.
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-20 px-4 py-8 sm:px-8 sm:py-14">
+    <main className="mx-auto flex w-full text-pretty max-w-6xl flex-1 flex-col gap-20 px-4 py-8 sm:px-8 sm:py-14">
       <section aria-labelledby="home-title" className="flex flex-col items-start gap-6">
         <p dir="ltr" className="flex items-center gap-2 self-start font-latin-display text-lg tracking-widest text-accent">
           <RecDot blinking />

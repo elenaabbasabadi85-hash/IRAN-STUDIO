@@ -123,7 +123,7 @@ export default function StudioPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8 sm:px-8 sm:py-12">
+    <main className="mx-auto flex w-full text-pretty max-w-5xl flex-1 flex-col gap-8 px-4 py-8 sm:px-8 sm:py-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 ref={heading} tabIndex={-1} className={focusRing}>
           {t.title}
