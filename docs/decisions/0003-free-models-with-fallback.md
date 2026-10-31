@@ -2,7 +2,7 @@
 
 # ۳. مدل‌های رایگان با مدل جایگزین
 
-- **وضعیت:** اجرا شده. دستیار ایده در درخواست [#48](https://github.com/elenaabbasabadi85-hash/IRAN-STUDIO/pull/48) روی همین پایه ساخته شده و هنوز ادغام نشده است.
+- **وضعیت:** اجرا شده. دستیار ایده هم روی همین پایه ساخته شد و در درخواست [#48](https://github.com/elenaabbasabadi85-hash/IRAN-STUDIO/pull/48) (۹ آبان ۱۴۰۵) ادغام شد. صفحه‌اش هنوز ساخته نشده است.
 - **از کجا آمده:** بخش Cost در [AGENTS.md](../../AGENTS.md)، ایشوی [#34](https://github.com/elenaabbasabadi85-hash/IRAN-STUDIO/issues/34) و درخواست [#35](https://github.com/elenaabbasabadi85-hash/IRAN-STUDIO/pull/35) (۸ آبان ۱۴۰۵).
 - **مسیر:** محتوا (علیرضا).
 
