@@ -6,7 +6,7 @@
 // برگرداند، و از همین اسکیما JSON Schema می‌سازد تا به مدل بگوییم دقیقاً چه شکلی می‌خواهیم.
 // یک منبع حقیقت برای هر سه کار: اعتبارسنجی، پیام خطا و دستور به مدل.
 import { z } from "zod";
-import type { ChannelProfile } from "@/core/types";
+import type { ChannelProfile, IdeaCard } from "@/core/types";
 
 // Mirrors MAX_LENGTH, LENGTH_MIN, LENGTH_MAX and the color rule in src/app/studio/new/schema.ts
 // (Platform lane). Copied, not imported, so this lane never depends on another lane's files.
@@ -47,10 +47,50 @@ export const testOutputSchema = z.object({
   message: z.string().trim().min(1),
 });
 
+// چرا دقیقاً پنج؟ آن‌قدر تنوع دارد که یوتیوبر انتخاب واقعی داشته باشد و آن‌قدر کم است که سریع خوانده
+// شود و در maxTokens مدل‌های رایگان جا شود. اگر این عدد عوض شد، prompts/idea.md را هم عوض کن.
+const IDEA_COUNT = 5;
+// کمی دست‌ودل‌باز، تا جوابی که از یک مدل رایگان کمی بلند درآمده کل پاسخ را رد نکند و یک تلاش دوباره
+// هزینه نکند؛ فقط جلوی پرحرفی واقعی را می‌گیرند.
+const IDEA_LIMITS = {
+  workingTitle: 60,
+  angle: 250,
+  whyItWorks: 400,
+  audience: 150,
+} as const;
+
+// چیزی که مدل می‌فرستد: بدون id و بدون references. مدل یوتیوب را نمی‌بیند، پس هر لینک یا عدد
+// بازدیدی که بدهد ساختگی است؛ references در IdeaCard اختیاری است و نبودنش قرارداد را نمی‌شکند.
+const ideaDraftSchema = z.object({
+  workingTitle: text(IDEA_LIMITS.workingTitle),
+  angle: text(IDEA_LIMITS.angle),
+  whyItWorks: text(IDEA_LIMITS.whyItWorks),
+  audience: text(IDEA_LIMITS.audience),
+});
+
+// قاعده‌های شمردنی (تعداد، طول، عنوان تکراری) را کد می‌سنجد، چون مدل در شمردن قابل‌اعتماد نیست و
+// پیام خطای Zod در تلاش دوباره به خود مدل برمی‌گردد؛ برای همین پیام refine فارسی و راهنماست.
+// قضاوت («زاویه تازه است؟»، «ایده‌ها واقعاً فرق دارند؟») را کد نمی‌تواند بسنجد و در پرامپت می‌ماند.
+export const ideaOutputSchema = z.object({
+  ideas: z
+    .array(ideaDraftSchema)
+    .length(IDEA_COUNT)
+    .refine((ideas) => new Set(ideas.map((idea) => idea.workingTitle)).size === ideas.length, {
+      message: "عنوان کاری ایده‌ها نباید تکراری باشد؛ ایده‌ی تکراری را با ایده‌ای تازه عوض کن.",
+    })
+    // شناسه را کد می‌سازد، نه مدل: مدل در ساختن شناسه‌ی یکتا قابل‌اعتماد نیست و شناسه‌ی تصادفی
+    // با ایده‌های دفعه‌ی بعد هم قاطی نمی‌شود. runAgent برای همین JSON Schema را با io: "input" می‌سازد.
+    .transform((ideas) => ideas.map((idea) => ({ id: crypto.randomUUID(), ...idea }))),
+});
+
+// Fails to compile if an idea in the response ever drifts from IdeaCard in src/core/types.ts.
+export const ideaMatchesContract: Same<z.output<typeof ideaOutputSchema>["ideas"][number], IdeaCard> = true;
+
 // The agents the route accepts. A role is added here together with its prompt in prompts/ and its
 // sample in fixtures/; runAgent fails to compile until all three exist.
 export const agentSchemas = {
   test: testOutputSchema,
+  idea: ideaOutputSchema,
 } as const;
 
 export type AgentRole = keyof typeof agentSchemas;
