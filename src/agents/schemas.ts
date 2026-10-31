@@ -1,4 +1,4 @@
-// Zod schemas for agent requests and outputs, plus the response types of POST /api/agents/<role>.
+// Zod schemas for agent requests, inputs and outputs, plus the response types of POST /api/agents/<role>.
 // No server-only code here, so studio pages can import these types later.
 //
 // چرا Zod؟ پاسخ مدل فقط متن است و TypeScript فقط هنگام کامپایل بررسی می‌کند، نه هنگام اجرا.
@@ -6,7 +6,8 @@
 // برگرداند، و از همین اسکیما JSON Schema می‌سازد تا به مدل بگوییم دقیقاً چه شکلی می‌خواهیم.
 // یک منبع حقیقت برای هر سه کار: اعتبارسنجی، پیام خطا و دستور به مدل.
 import { z } from "zod";
-import type { ChannelProfile, IdeaCard } from "@/core/types";
+import type { ChannelProfile, IdeaCard, Script, ScriptSection } from "@/core/types";
+import { estimateSeconds, scriptTarget } from "@/agents/scriptTiming";
 
 // Mirrors MAX_LENGTH, LENGTH_MIN, LENGTH_MAX and the color rule in src/app/studio/new/schema.ts
 // (Platform lane). Copied, not imported, so this lane never depends on another lane's files.
@@ -87,11 +88,65 @@ export const ideaOutputSchema = z.object({
 // Fails to compile if an idea in the response ever drifts from IdeaCard in src/core/types.ts.
 export const ideaMatchesContract: Same<z.output<typeof ideaOutputSchema>["ideas"][number], IdeaCard> = true;
 
+// ورودی سناریونویس: ایده‌ای که انسان در صفحه‌ی ایده تأیید کرده، با همان اسکیما و همان حدها. z.object
+// کلیدهای اضافه (id و references) را دور می‌ریزد، پس به مدل فقط چهار فیلد ایده می‌رسد.
+export const scriptInputSchema = z.object({ idea: ideaDraftSchema });
+
+// چرا دقیقاً سه قلاب؟ بیشترین ریزش مخاطب در ثانیه‌های اول است، پس انتخاب میان سه شروع واقعاً متفاوت
+// (پرسش، تضاد، صحنه) ارزش دارد. سه آن‌قدر کم است که یوتیوبر هر سه را بلند امتحان کند و همه در یک
+// پاسخ جا شوند. اگر این عدد عوض شد، prompts/script.md را هم عوض کن.
+const HOOK_COUNT = 3;
+// یک بخش قول ویدیو و دست‌کم دو بخش بدنه؛ بیست بخش برای سقف ده دقیقه با بخش‌های نیم‌دقیقه‌ای هم جا دارد.
+const SECTION_COUNT = { min: 3, max: 20 } as const;
+// دست‌ودل‌بازتر از ایده‌ها: مدل‌های رایگان پرحرف‌اند و تلاش دوباره برای یک سناریوی بلند حدود یک دقیقه
+// طول می‌کشد. sectionText حدود ۶۵۰ کلمه است.
+export const SCRIPT_LIMITS = {
+  hook: 400,
+  sectionTitle: 80,
+  sectionText: 4000,
+  cta: 400,
+} as const;
+
+const scriptSectionDraftSchema = z.object({
+  title: text(SCRIPT_LIMITS.sectionTitle),
+  text: text(SCRIPT_LIMITS.sectionText),
+});
+
+// مثل ایده‌ها: قاعده‌های شمردنی را کد می‌سنجد و قضاوت («قلاب گیراست؟»، «متن گفتنی است؟») در پرامپت می‌ماند.
+export const scriptOutputSchema = z.object({
+  hooks: z
+    .array(text(SCRIPT_LIMITS.hook))
+    .length(HOOK_COUNT)
+    .refine((hooks) => new Set(hooks).size === hooks.length, {
+      message: "قلاب‌ها نباید تکراری باشند؛ قلاب تکراری را با شروعی از نوع دیگر عوض کن.",
+    }),
+  sections: z
+    .array(scriptSectionDraftSchema)
+    .min(SECTION_COUNT.min)
+    .max(SECTION_COUNT.max)
+    // شناسه و زمان را کد می‌سازد، نه مدل: مدل در ساختن شناسه‌ی یکتا و شمردن کلمه قابل‌اعتماد نیست، و
+    // صفحه‌ی سناریو بعد از ویرایش با همان estimateSeconds همان عددی را می‌گیرد که سرور داده بود.
+    // طول کل را عمداً رد نمی‌کنیم: تخمین تقریبی است و تلاش دوباره برای سناریوی بلند حدود یک دقیقه و یک
+    // درخواست از سهمیه‌ی رایگان هزینه دارد. صفحه مجموع را کنار طول معمول کانال نشان می‌دهد و انسان تصمیم می‌گیرد.
+    .transform((sections) =>
+      sections.map((section) => ({ id: crypto.randomUUID(), ...section, estSeconds: estimateSeconds(section.text) })),
+    ),
+  cta: text(SCRIPT_LIMITS.cta),
+});
+
+type ScriptOutput = z.output<typeof scriptOutputSchema>;
+
+// Fails to compile if a section in the response ever drifts from ScriptSection in src/core/types.ts.
+export const sectionMatchesContract: Same<ScriptOutput["sections"][number], ScriptSection> = true;
+// chosenHook and edited are optional in Script and stay unset, so the output is assignable to it, not the same.
+export const scriptMatchesContract: [ScriptOutput] extends [Script] ? true : false = true;
+
 // The agents the route accepts. A role is added here together with its prompt in prompts/ and its
 // sample in fixtures/; runAgent fails to compile until all three exist.
 export const agentSchemas = {
   test: testOutputSchema,
   idea: ideaOutputSchema,
+  script: scriptOutputSchema,
 } as const;
 
 export type AgentRole = keyof typeof agentSchemas;
@@ -100,6 +155,25 @@ export type AgentOutput<R extends AgentRole = AgentRole> = z.output<(typeof agen
 export function isAgentRole(value: string): value is AgentRole {
   return Object.hasOwn(agentSchemas, value);
 }
+
+/** Checks a role's input and turns it into what the model sees; fails only when the input is invalid. */
+type InputStep = (input: unknown, channel: ChannelProfile) => { ok: true; input: unknown } | { ok: false };
+
+// Ties a schema to its prepare function, so `prepare` gets the checked type instead of unknown.
+function inputStep<T>(schema: z.ZodType<T>, prepare: (input: T, channel: ChannelProfile) => unknown): InputStep {
+  return (input, channel) => {
+    const parsed = schema.safeParse(input);
+    return parsed.success ? { ok: true, input: prepare(parsed.data, channel) } : { ok: false };
+  };
+}
+
+// Roles that need an input. The route runs this before the agent, so the model sees only checked
+// fields; it stays here, next to agentSchemas, so the route and runAgent never name a role.
+// Roles without one (test, idea) get their input unchanged, as before.
+export const agentInputs: Partial<Record<AgentRole, InputStep>> = {
+  // طول هدف را کد حساب می‌کند و کنار ایده می‌فرستد؛ src/agents/scriptTiming.ts را ببین.
+  script: inputStep(scriptInputSchema, ({ idea }, channel) => ({ idea, target: scriptTarget(channel.avgLengthMin) })),
+};
 
 export interface AgentResponse<R extends AgentRole = AgentRole> {
   data: AgentOutput<R>;

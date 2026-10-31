@@ -1,4 +1,4 @@
-// Which OpenRouter models each agent uses, and how creative each one may be.
+// Which OpenRouter models each agent uses, how creative each one may be, and how long it may take.
 // Slugs checked against https://openrouter.ai/api/v1/models on 2026-10-30. Free models (":free")
 // come and go, so check that list again if a model starts failing for every request.
 
@@ -11,7 +11,14 @@ export interface ModelConfig {
   temperature: number;
   /** On some models reasoning tokens count toward this too, so it leaves room beyond the JSON. */
   maxTokens: number;
+  /** How long one call may take. */
+  callTimeoutMs: number;
+  /** All calls of one run together (retry and fallback); stays under maxDuration in src/app/api/agents/[role]/route.ts. */
+  totalBudgetMs: number;
 }
+
+// Short JSON answers: one call rarely needs more than a few seconds.
+const SHORT_RUN = { callTimeoutMs: 25_000, totalBudgetMs: 55_000 } as const;
 
 // دما (temperature) یعنی چقدر مدل از محتمل‌ترین کلمه فاصله بگیرد: بالاتر یعنی متنوع‌تر، پایین‌تر یعنی قابل‌پیش‌بینی‌تر.
 export const MODELS: Record<ModelRole, ModelConfig> = {
@@ -21,13 +28,21 @@ export const MODELS: Record<ModelRole, ModelConfig> = {
     fallback: "thinkingmachines/inkling:free",
     temperature: 0.8,
     maxTokens: 3000,
+    ...SHORT_RUN,
   },
   // متن ویدیو: 0.7؛ روایت باید زنده بماند، اما ترتیب بخش‌ها و زمان‌بندی نباید از دست برود.
+  // چرا زمان بیشتر فقط برای سناریو؟ فقط این دستیار متن بلند می‌نویسد (تا SCRIPT_MAX_MINUTES در
+  // src/agents/scriptTiming.ts). زمان بیشتر برای بقیه فقط یعنی کاربر دیرتر از یک خطا باخبر شود.
+  // هر تماس تا ۹۰ ثانیه و کل ۱۲۰ ثانیه: اگر مدل اول زود خطا بدهد (مثلاً ۴۲۹)، مدل جایگزین هنوز
+  // تقریباً یک تماس کامل وقت دارد. maxTokens: ده دقیقه متن فارسی با reasoning حدود ۴ تا ۶ هزار توکن
+  // است و پاسخ بریده یعنی JSON خراب و یک تلاش دوباره‌ی کامل؛ جلوی پرحرفی را سقف زمان می‌گیرد.
   script: {
     primary: "google/gemma-4-31b-it:free",
     fallback: "thinkingmachines/inkling:free",
     temperature: 0.7,
-    maxTokens: 6000,
+    maxTokens: 8000,
+    callTimeoutMs: 90_000,
+    totalBudgetMs: 120_000,
   },
   // ویراستار: 0.3؛ کارش درست کردن متن موجود است، نه ساختن حرف تازه.
   editor: {
@@ -35,6 +50,7 @@ export const MODELS: Record<ModelRole, ModelConfig> = {
     fallback: "google/gemma-4-31b-it:free",
     temperature: 0.3,
     maxTokens: 6000,
+    ...SHORT_RUN,
   },
   // نویسنده‌ی بسته‌ی انتشار: 0.6؛ عنوان‌ها کمی خلاقیت می‌خواهند، توضیحات و هشتگ‌ها دقت.
   writer: {
@@ -42,6 +58,7 @@ export const MODELS: Record<ModelRole, ModelConfig> = {
     fallback: "nvidia/nemotron-3-ultra-550b-a55b:free",
     temperature: 0.6,
     maxTokens: 3000,
+    ...SHORT_RUN,
   },
   // آزمایش: 0.2؛ تقریباً قطعی، تا نتیجه‌ی آزمایش از یک اجرا به اجرای بعد زیاد عوض نشود.
   test: {
@@ -49,5 +66,6 @@ export const MODELS: Record<ModelRole, ModelConfig> = {
     fallback: "nvidia/nemotron-3.5-lightning:free",
     temperature: 0.2,
     maxTokens: 1000,
+    ...SHORT_RUN,
   },
 };

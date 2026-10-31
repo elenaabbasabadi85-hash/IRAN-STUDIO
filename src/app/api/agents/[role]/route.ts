@@ -3,6 +3,7 @@
 // Runs on the default Node.js runtime; Cache Components does not allow a `runtime` export.
 import { runAgent, type AgentError } from "@/agents/runAgent";
 import {
+  agentInputs,
   agentRequestSchema,
   isAgentRole,
   type AgentErrorResponse,
@@ -10,7 +11,10 @@ import {
 } from "@/agents/schemas";
 import t from "@/agents/strings.fa.json";
 
-export const maxDuration = 60;
+// A plain number, because Next.js reads it at build time. It covers the longest totalBudgetMs in
+// src/agents/models.config.ts (script, 120 s) with room to send the response; keep the two in step.
+// Above 60 s, Vercel Hobby needs Fluid compute (up to 300 s).
+export const maxDuration = 150;
 
 /** Room for a full channel profile plus the agent's input (e.g. a whole script). */
 const MAX_BODY_CHARS = 32_000;
@@ -50,7 +54,19 @@ export async function POST(request: Request, ctx: RouteContext<"/api/agents/[rol
     return fail(400, t.errors.badRequest);
   }
 
-  const result = await runAgent(role, parsed.data.channel, parsed.data.input);
+  // Roles with an input step (script) send the model only the checked, prepared input; the others
+  // pass their input on unchanged, as before.
+  let input = parsed.data.input;
+  const prepareInput = agentInputs[role];
+  if (prepareInput) {
+    const prepared = prepareInput(input, parsed.data.channel);
+    if (!prepared.ok) {
+      return fail(400, t.errors.badRequest);
+    }
+    input = prepared.input;
+  }
+
+  const result = await runAgent(role, parsed.data.channel, input);
   if (!result.ok) {
     const { status, message } = ERRORS[result.error];
     return fail(status, message);
