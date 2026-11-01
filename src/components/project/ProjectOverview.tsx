@@ -70,12 +70,10 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
 
       <Surface as="section" aria-labelledby={nextStepId} className="flex flex-col items-start gap-4">
         <h2 id={nextStepId}>{t.nextTitle}</h2>
-        <p className="max-w-2xl text-muted">{fromIdea ? t.ideaNotReady : t.uploadText}</p>
-        {!fromIdea && (
-          <Button variant="primary" href={`/studio/${project.id}/record/upload`}>
-            {t.upload}
-          </Button>
-        )}
+        <p className="max-w-2xl text-muted">{fromIdea ? t.ideaText : t.uploadText}</p>
+        <Button variant="primary" href={`/studio/${project.id}${fromIdea ? '/idea' : '/record/upload'}`}>
+          {fromIdea ? t.idea : t.upload}
+        </Button>
       </Surface>
     </>
   );
