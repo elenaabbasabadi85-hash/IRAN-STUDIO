@@ -141,6 +141,9 @@ export default function SubtitlesClient({ projectId }: { projectId: string }) {
               <Button variant="secondary" onClick={download}>
                 {t.download}
               </Button>
+              <Button variant="secondary" href={`/studio/${project.id}/edit/cover`}>
+                {t.goToCover}
+              </Button>
             </div>
             {saveStatus === "saved" && (
               <p className="text-sm" aria-live="polite">

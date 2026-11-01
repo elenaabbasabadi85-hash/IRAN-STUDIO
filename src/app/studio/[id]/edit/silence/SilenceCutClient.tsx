@@ -466,9 +466,14 @@ export default function SilenceCutClient({ projectId }: { projectId: string }) {
           <p className="text-sm text-foreground/70">{fill(t.export.outputsCount, { count: int.format(outputsCount) })}</p>
         )}
         {(exportStatus.kind === "saved" || outputsCount > 0) && (
-          <Button variant="secondary" href={`/studio/${project.id}/edit/subtitles`} className="w-fit">
-            {t.export.goToSubtitles}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" href={`/studio/${project.id}/edit/subtitles`}>
+              {t.export.goToSubtitles}
+            </Button>
+            <Button variant="secondary" href={`/studio/${project.id}/edit/cover`}>
+              {t.export.goToCover}
+            </Button>
+          </div>
         )}
       </section>
     </main>
