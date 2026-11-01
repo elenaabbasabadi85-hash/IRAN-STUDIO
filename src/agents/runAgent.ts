@@ -11,6 +11,7 @@ import { MODELS } from "@/agents/models.config";
 import { callOpenRouter, type ChatError, type ChatMessage } from "@/agents/openrouter";
 import { agentSchemas, type AgentOutput, type AgentRole } from "@/agents/schemas";
 import ideaFixture from "../../fixtures/idea.json";
+import scriptFixture from "../../fixtures/script.json";
 import testFixture from "../../fixtures/test.json";
 
 // Each readFile gets its literal path right in the call, never built from the role string, so
@@ -19,17 +20,16 @@ import testFixture from "../../fixtures/test.json";
 const PROMPTS = {
   test: () => readFile(path.join(process.cwd(), "prompts", "test.md"), "utf8"),
   idea: () => readFile(path.join(process.cwd(), "prompts", "idea.md"), "utf8"),
+  script: () => readFile(path.join(process.cwd(), "prompts", "script.md"), "utf8"),
 } satisfies Record<AgentRole, () => Promise<string>>;
 
 // Imported, not read from disk, so the samples are bundled like fixtures/transcript.json.
 const FIXTURES = {
   test: testFixture,
   idea: ideaFixture,
+  script: scriptFixture,
 } satisfies Record<AgentRole, unknown>;
 
-/** Stays under the route's maxDuration (60 s) with room to send the response. */
-const TOTAL_BUDGET_MS = 55_000;
-const CALL_TIMEOUT_MS = 25_000;
 /** With less time than this left, another call can't realistically finish. */
 const MIN_CALL_MS = 3_000;
 
@@ -87,8 +87,9 @@ export async function runAgent(role: AgentRole, channel: ChannelProfile, input: 
     { role: "system", content: buildSystemPrompt(rolePrompt, channel, schema) },
     { role: "user", content: input === undefined ? START_MESSAGE : JSON.stringify(input) },
   ];
+  // Each role has its own time budget in models.config.ts; only script writes long answers.
   const config = MODELS[role];
-  const deadline = Date.now() + TOTAL_BUDGET_MS;
+  const deadline = Date.now() + config.totalBudgetMs;
   let lastError: AgentError = "upstream";
 
   for (const model of [config.primary, config.fallback]) {
@@ -98,7 +99,7 @@ export async function runAgent(role: AgentRole, channel: ChannelProfile, input: 
     // نشان دادن پیام خطای Zod به خود مدل درست می‌شوند. اگر همان مدل دو بار نتواند، شانس بار سوم کم است
     // و هر تلاش زمان و سهمیه‌ی رایگان را مصرف می‌کند؛ بهتر است سراغ مدل جایگزین برویم.
     for (let attempt = 1; attempt <= 2; attempt++) {
-      const timeoutMs = Math.min(CALL_TIMEOUT_MS, deadline - Date.now());
+      const timeoutMs = Math.min(config.callTimeoutMs, deadline - Date.now());
       if (timeoutMs < MIN_CALL_MS) {
         console.info(`[agents] role=${role} out of time before calling ${model}`);
         return { ok: false, error: "timeout" };
