@@ -6,16 +6,40 @@ import type {
   ThreadMode,
 } from "./protocol";
 
-// The ffmpeg cores are not npm dependencies; they load at runtime from a pinned
-// CDN version (the one @ffmpeg/ffmpeg 0.12.15 targets). Only the engine is
-// downloaded; the user's video never leaves the browser.
+// The single-thread core is served from our own site (/ffmpeg/, copied from
+// @ffmpeg/core on postinstall), with the pinned CDN version (the one
+// @ffmpeg/ffmpeg 0.12.15 targets) as a fallback. The multi-thread core only
+// loads from the CDN. Only the engine is downloaded; the user's video never
+// leaves the browser.
 const CORE_VERSION = "0.12.10";
 const CDN = "https://cdn.jsdelivr.net/npm";
+const LOCAL_BASE = "/ffmpeg";
 
 // Blob URLs are cached per mode so the ~31 MB wasm is downloaded once per tab.
 const coreURLCache = new Map<ThreadMode, Promise<CoreURLs>>();
 
+async function fetchLocalCoreURLs(): Promise<CoreURLs> {
+  const { toBlobURL } = await import("@ffmpeg/util");
+  const jsPath = `${LOCAL_BASE}/ffmpeg-core.js`;
+  const wasmPath = `${LOCAL_BASE}/ffmpeg-core.wasm`;
+  // toBlobURL doesn't check the status, so a 404 page would become the "core".
+  const heads = await Promise.all([jsPath, wasmPath].map((p) => fetch(p, { method: "HEAD" })));
+  if (heads.some((r) => !r.ok)) throw new Error("Local ffmpeg core not found");
+  const [coreURL, wasmURL] = await Promise.all([
+    toBlobURL(jsPath, "text/javascript"),
+    toBlobURL(wasmPath, "application/wasm"),
+  ]);
+  return { coreURL, wasmURL };
+}
+
 async function fetchCoreURLs(mode: ThreadMode): Promise<CoreURLs> {
+  if (mode === "st") {
+    try {
+      return await fetchLocalCoreURLs();
+    } catch {
+      // Fall through to the CDN.
+    }
+  }
   const { toBlobURL } = await import("@ffmpeg/util");
   // ESM build: the job worker is a module worker and imports the core with import().
   const base = `${CDN}/@ffmpeg/${mode === "mt" ? "core-mt" : "core"}@${CORE_VERSION}/dist/esm`;
