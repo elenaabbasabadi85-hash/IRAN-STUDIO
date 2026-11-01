@@ -18,6 +18,7 @@ export function projectStartStep(project: Project): StepId {
 
 // The steps that have a page so far, by path under /studio/<id>. A step gets a link only once its page exists.
 const STEP_PAGES: Partial<Record<StepId, string>> = {
+  idea: '/idea',
   record: '/record',
   video: '/edit',
   publish: '/publish',
