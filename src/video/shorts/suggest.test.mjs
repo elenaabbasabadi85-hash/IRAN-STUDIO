@@ -1,8 +1,11 @@
 // Plain assertions, no test framework: run with `node src/video/shorts/suggest.test.mjs` (Node 22.18+).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { keptSegments, totalSeconds } from "../cuts.ts";
+import { retimeWords } from "../subtitles/srt.ts";
 import { canMoveCrop, shortVideoFilter, SHORT_SIZE } from "./frame.ts";
 import {
+  cutsMatchVideo,
   MAX_SHORT_SECONDS,
   MAX_SUGGESTIONS,
   MIN_SHORT_SECONDS,
@@ -86,6 +89,68 @@ assert.deepEqual(suggestShorts(speech(30), 0 / 0), []);
   assert.ok(short.hook.endsWith("…"));
   assert.equal(short.start, 0.85);
 }
+
+// Suggestions for a shortened video: the same steps as ShortsClient, with the real functions.
+const suggestForCut = (transcript, cuts, rawDuration, cutDuration) =>
+  suggestShorts(
+    { ...transcript, words: retimeWords(transcript.words, keptSegments(cuts, rawDuration)) },
+    cutDuration,
+  );
+
+// Times move onto the shortened video: a 10 s cut at the start and one in the middle.
+{
+  const raw = {
+    language: "fa",
+    words: [
+      { w: "اول.", start: 10, end: 11 },
+      ...speech(24, 5, 11).words,
+      { w: "حذف‌شده", start: 40, end: 41 }, // inside the middle cut
+      { w: "سوم.", start: 50, end: 51 },
+      ...speech(24, 5, 51).words,
+    ],
+  };
+  const cuts = [
+    { start: 0, end: 10, reason: "silence" },
+    { start: 35, end: 50, reason: "silence" },
+  ];
+  const kept = keptSegments(cuts, 75);
+  assert.deepEqual(kept, [
+    { start: 10, end: 35 },
+    { start: 50, end: 75 },
+  ]);
+  const shorts = suggestForCut(raw, cuts, 75, totalSeconds(kept));
+  assert.ok(shorts.length >= 1);
+  assert.equal(shorts[0].start, 0, "raw second 10 is second 0 of the shortened video");
+  assert.ok(shorts[0].hook.startsWith("اول."));
+  for (const short of shorts) {
+    assert.ok(short.end <= 50, "stays inside the shortened video");
+    assert.ok(!short.hook.includes("حذف‌شده"));
+  }
+}
+
+// A word inside a cut is gone, and later words close the gap it left.
+{
+  const words = [
+    { w: "الف", start: 1, end: 2 },
+    { w: "حذف‌شده", start: 4, end: 5 },
+    { w: "ب", start: 7, end: 8 },
+  ];
+  const retimed = retimeWords(words, keptSegments([{ start: 3, end: 6, reason: "silence" }], 10));
+  assert.deepEqual(retimed, [
+    { w: "الف", start: 1, end: 2 },
+    { w: "ب", start: 4, end: 5 },
+  ]);
+}
+
+// Cuts that remove every word leave nothing to suggest.
+assert.deepEqual(suggestForCut(speech(30), [{ start: 0, end: 30, reason: "manual" }], 30, 1), []);
+
+// The warning: the shortened video may differ from its kept segments by up to 0.5 s.
+assert.equal(cutsMatchVideo(33.46, 33.46), true);
+assert.equal(cutsMatchVideo(33.46, 33.9), true);
+assert.equal(cutsMatchVideo(33.5, 34), true);
+assert.equal(cutsMatchVideo(33.46, 34), false);
+assert.equal(cutsMatchVideo(33.46, 32.9), false);
 
 // Typed time ranges.
 assert.equal(shortRangeError(10, 40, 100), null);

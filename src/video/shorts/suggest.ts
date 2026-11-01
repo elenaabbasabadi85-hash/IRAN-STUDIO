@@ -15,6 +15,8 @@ const SENTENCE_PAUSE_SECONDS = 0.7;
 const PADDING_SECONDS = 0.15;
 const MAX_HOOK_CHARS = 80;
 const SENTENCE_END_RE = /[.!?؟…]$/;
+/** A shortened video may differ from its kept segments by this much (seconds): encoding rounds lengths. */
+const MAX_CUT_LENGTH_DIFF_SECONDS = 0.5;
 
 export type ShortRangeError = "order" | "tooShort" | "tooLong" | "outside";
 
@@ -103,6 +105,11 @@ export function suggestShorts(transcript: Transcript, duration: number): ShortSu
     .slice(0, MAX_SUGGESTIONS)
     .sort((a, b) => a.order - b.order)
     .map(({ group }) => toSuggestion(group, duration));
+}
+
+/** False when the cuts changed after the shortened video was made, so mapped times would be off. */
+export function cutsMatchVideo(keptSeconds: number, videoSeconds: number): boolean {
+  return Math.abs(keptSeconds - videoSeconds) <= MAX_CUT_LENGTH_DIFF_SECONDS;
 }
 
 /** Why a typed time range can't be cut, or null when it can. */

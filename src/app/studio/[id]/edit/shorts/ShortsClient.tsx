@@ -3,16 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import type { MediaState, Project, ShortSuggestion } from "@/core/types";
+import type { MediaState, Project, ShortSuggestion, Transcript } from "@/core/types";
 import { getBlob, getProject } from "@/storage/db";
+import { keptSegments, totalSeconds, type TimeRange } from "@/video/cuts";
 import { MB, fill, int, num1 } from "@/video/format";
 import { isQuotaError } from "@/video/saveRawVideo";
 import { CENTER_POSITION, canMoveCrop } from "@/video/shorts/frame";
 import { MakeShortError, makeShort, type MakeShortProgress } from "@/video/shorts/makeShort";
 import { deleteShortOutput, saveShortOutput, saveShortSuggestions } from "@/video/shorts/saveShorts";
-import { shortRangeError, suggestShorts } from "@/video/shorts/suggest";
+import { cutsMatchVideo, shortRangeError, suggestShorts } from "@/video/shorts/suggest";
 import t from "@/video/shorts/strings.fa.json";
-import { readVideoInfo } from "@/video/upload/validate";
+import { retimeWords, subtitleDuration } from "@/video/subtitles/srt";
+import { readVideoInfo, type VideoInfo } from "@/video/upload/validate";
 import { pickOutputs } from "../../publish/kit";
 
 type Load =
@@ -21,7 +23,18 @@ type Load =
 
 type VideoState =
   | { kind: "loading" | "missing" | "unreadable" }
-  | { kind: "ready"; url: string; duration: number; width: number; height: number };
+  | {
+      kind: "ready";
+      /** The video clips are cut from: the newest shortened video, or the raw one when there are no cuts. */
+      sourceKey: string;
+      url: string;
+      duration: number;
+      width: number;
+      height: number;
+      /** Set when the source is a shortened video: the parts of the raw video it is made of. */
+      kept?: TimeRange[];
+      cutsChanged: boolean;
+    };
 
 interface Item extends ShortSuggestion {
   id: string;
@@ -46,10 +59,30 @@ const NEW_CLIP_SECONDS = 30;
 
 const toItems = (shorts: ShortSuggestion[]): Item[] => shorts.map((short) => ({ ...short, id: crypto.randomUUID() }));
 
-/** Saved clips are shown as they were saved, even when the user left none. */
-function initialItems(media: MediaState, duration: number): Item[] {
+/** Transcript times belong to the raw video, so they are moved onto a shortened one, as for subtitles. */
+function suggestItems(transcript: Transcript, duration: number, kept?: TimeRange[]): Item[] {
+  const words = kept ? retimeWords(transcript.words, kept) : transcript.words;
+  return toItems(suggestShorts({ ...transcript, words }, duration));
+}
+
+/**
+ * Saved clips are shown as they were saved, even when the user left none. Their times belong to
+ * the source video; saving a new shortened video drops them (saveCutOutput).
+ */
+function initialItems(media: MediaState, duration: number, kept?: TimeRange[]): Item[] {
   if (media.shorts) return toItems(media.shorts);
-  return media.transcript ? toItems(suggestShorts(media.transcript, duration)) : [];
+  return media.transcript ? suggestItems(media.transcript, duration, kept) : [];
+}
+
+/** Null when the browser can't read the video. */
+async function openVideo(blob: Blob, urls: string[]): Promise<{ url: string; info: VideoInfo } | null> {
+  const url = URL.createObjectURL(blob);
+  urls.push(url);
+  try {
+    return { url, info: await readVideoInfo(url) };
+  } catch {
+    return null;
+  }
 }
 
 export default function ShortsClient({ projectId }: { projectId: string }) {
@@ -68,10 +101,10 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
   const stopAtRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Loads the project, then its raw video, and suggests clips once the length is known.
+  // Loads the project, then its source video, and suggests clips once the length is known.
   useEffect(() => {
     let active = true;
-    let url: string | null = null;
+    const urls: string[] = [];
     (async () => {
       let project: Project | undefined;
       try {
@@ -85,25 +118,48 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
       const media = project?.media;
       if (!media?.rawVideoKey || (!media.transcript && !media.shorts)) return;
 
-      const blob = await getBlob(media.rawVideoKey).catch(() => undefined);
+      // Replacing the raw video drops the cuts but keeps old outputs, so without cuts a
+      // shortened video in the list belongs to an earlier raw video and is ignored.
+      const cuts = media.cuts ?? [];
+      const cutKey = cuts.length > 0 ? pickOutputs(media.outputs).video?.key : undefined;
+      const [rawBlob, cutBlob] = await Promise.all([
+        getBlob(media.rawVideoKey).catch(() => undefined),
+        cutKey ? getBlob(cutKey).catch(() => undefined) : undefined,
+      ]);
       if (!active) return;
-      if (!blob) {
+      if (!rawBlob && !cutBlob) {
         setVideo({ kind: "missing" });
         return;
       }
-      url = URL.createObjectURL(blob);
-      try {
-        const info = await readVideoInfo(url);
-        if (!active) return;
-        setItems(initialItems(media, info.durationSec));
-        setVideo({ kind: "ready", url, duration: info.durationSec, width: info.width, height: info.height });
-      } catch {
-        if (active) setVideo({ kind: "unreadable" });
+
+      const raw = rawBlob ? await openVideo(rawBlob, urls) : null;
+      const cut = cutBlob ? await openVideo(cutBlob, urls) : null;
+      if (!active) return;
+      const source = cut ?? raw;
+      if (!source) {
+        setVideo({ kind: "unreadable" });
+        return;
       }
+
+      const { durationSec: duration, width, height } = source.info;
+      // applyCuts works from the raw video's length; the last word's end stands in if it can't be read.
+      const rawDuration = raw?.info.durationSec ?? subtitleDuration(media.transcript?.words ?? [], cuts);
+      const kept = cut ? keptSegments(cuts, rawDuration) : undefined;
+      setItems(initialItems(media, duration, kept));
+      setVideo({
+        kind: "ready",
+        sourceKey: cut && cutKey ? cutKey : media.rawVideoKey,
+        url: source.url,
+        duration,
+        width,
+        height,
+        kept,
+        cutsChanged: kept !== undefined && raw !== null && !cutsMatchVideo(totalSeconds(kept), duration),
+      });
     })();
     return () => {
       active = false;
-      if (url) URL.revokeObjectURL(url);
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [projectId]);
 
@@ -202,7 +258,7 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
     );
   }
 
-  const { duration } = video;
+  const { duration, kept, sourceKey } = video;
   const busy = makeStatus.kind === "running" || makeStatus.kind === "saving" || listStatus === "saving";
   const allValid = items.every((item) => shortRangeError(item.start, item.end, duration) === null);
 
@@ -223,7 +279,7 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
   function suggestAgain() {
     if (!media?.transcript) return;
     if (items.length > 0 && !window.confirm(t.list.confirmSuggest)) return;
-    changed(toItems(suggestShorts(media.transcript, duration)));
+    changed(suggestItems(media.transcript, duration, kept));
   }
 
   function play({ start, end }: Item) {
@@ -265,7 +321,7 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
 
   /** One at a time: a fresh ffmpeg worker per clip frees the wasm memory between them. */
   async function makeClips(list: Item[]) {
-    if (busy || !media?.rawVideoKey) return;
+    if (busy) return;
     if (!(await persistList())) return;
 
     const controller = new AbortController();
@@ -274,7 +330,7 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
     const total = list.length;
     setMakeStatus({ kind: "running", current: 1, total, progress: { phase: "loading" } });
     try {
-      const source = await getBlob(media.rawVideoKey);
+      const source = await getBlob(sourceKey);
       if (!source) {
         setMakeStatus({ kind: "error", message: t.videoMissing });
         return;
@@ -325,6 +381,11 @@ export default function ShortsClient({ projectId }: { projectId: string }) {
 
       <section className="flex flex-col gap-3 rounded-xl border border-foreground/15 p-4">
         <h2 className="font-semibold">{t.frame.title}</h2>
+        {video.cutsChanged && (
+          <p role="alert" className="text-sm text-accent">
+            {t.frame.cutsChanged}
+          </p>
+        )}
         {/* object-fit: cover shows exactly what the crop filter keeps. */}
         <video
           ref={videoRef}

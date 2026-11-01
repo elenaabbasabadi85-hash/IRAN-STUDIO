@@ -1,4 +1,4 @@
-// Cuts one 9:16 clip out of the raw video with ffmpeg.wasm, entirely in the browser.
+// Cuts one 9:16 clip out of the source video with ffmpeg.wasm, entirely in the browser.
 // -ss before -i seeks instead of decoding everything before the clip, so a clip late in a long
 // video costs about the same as an early one. The default stream choice keeps silent videos working.
 import { runFFmpegJob } from "@/video/ffmpeg/client";
