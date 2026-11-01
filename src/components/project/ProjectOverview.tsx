@@ -3,13 +3,13 @@
 import { useEffect, useId, useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { StepRail, type StepId } from '@/components/ui/StepRail';
+import { StepRail } from '@/components/ui/StepRail';
 import { Surface } from '@/components/ui/Surface';
 import type { Project } from '@/core/types';
 import fa from '@/i18n/fa.json';
 import { format } from '@/i18n/format';
 import { getProject } from '@/storage/db';
-import { projectStartStep, projectStepStatuses } from './steps';
+import { projectStartStep, projectStepHrefs, projectStepStatuses } from './steps';
 
 const t = fa.studio.project;
 
@@ -55,12 +55,6 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
 
   const { project } = load;
   const statuses = projectStepStatuses(project);
-  // Only steps whose pages exist get a link.
-  const hrefs: Partial<Record<StepId, string>> = {
-    record: `/studio/${project.id}/record`,
-    video: `/studio/${project.id}/edit`,
-    publish: `/studio/${project.id}/publish`,
-  };
   const fromIdea = project.entry === 'idea';
 
   return (
@@ -72,16 +66,14 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
         <Badge tone="outline">{t.entry[project.entry]}</Badge>
       </header>
 
-      <StepRail statuses={statuses} hrefs={hrefs} current={projectStartStep(project)} />
+      <StepRail statuses={statuses} hrefs={projectStepHrefs(project.id)} current={projectStartStep(project)} />
 
       <Surface as="section" aria-labelledby={nextStepId} className="flex flex-col items-start gap-4">
         <h2 id={nextStepId}>{t.nextTitle}</h2>
-        <p className="max-w-2xl text-muted">{fromIdea ? t.ideaNotReady : t.uploadText}</p>
-        {!fromIdea && (
-          <Button variant="primary" href={`/studio/${project.id}/record/upload`}>
-            {t.upload}
-          </Button>
-        )}
+        <p className="max-w-2xl text-muted">{fromIdea ? t.ideaText : t.uploadText}</p>
+        <Button variant="primary" href={`/studio/${project.id}${fromIdea ? '/idea' : '/record/upload'}`}>
+          {fromIdea ? t.idea : t.upload}
+        </Button>
       </Surface>
     </>
   );
