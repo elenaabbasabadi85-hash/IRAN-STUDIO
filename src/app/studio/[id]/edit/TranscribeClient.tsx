@@ -188,9 +188,14 @@ export default function TranscribeClient({ projectId }: { projectId: string }) {
       {shown && <TranscriptView result={shown} />}
 
       {rawVideoKey && project.media?.transcript && (
-        <Link href={`/studio/${project.id}/edit/silence`} className="w-fit underline">
-          {t.goToSilence}
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link href={`/studio/${project.id}/edit/silence`} className="w-fit underline">
+            {t.goToSilence}
+          </Link>
+          <Link href={`/studio/${project.id}/edit/shorts`} className="w-fit underline">
+            {t.shortsPage}
+          </Link>
+        </div>
       )}
     </main>
   );

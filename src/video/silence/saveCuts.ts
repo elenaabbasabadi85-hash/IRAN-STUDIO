@@ -1,5 +1,5 @@
 // Stores silence cuts and the shortened video in the project. Browser only.
-import type { CutSegment, OutputFile } from "@/core/types";
+import type { CutSegment, MediaState, OutputFile } from "@/core/types";
 import { deleteBlob, getProject, saveBlob, updateProject } from "@/storage/db";
 import { ProjectNotFoundError } from "@/video/saveRawVideo";
 
@@ -18,7 +18,10 @@ export async function saveSilenceCuts(projectId: string, silenceCuts: CutSegment
   await updateProject(projectId, { media: { ...project.media, cuts } });
 }
 
-/** Saves an exported video and lists it in media.outputs. */
+/**
+ * Saves an exported video and lists it in media.outputs. Short clips are cut from the newest
+ * exported video, so saved clip times no longer fit and are dropped, to be suggested again.
+ */
 export async function saveCutOutput(projectId: string, video: Blob): Promise<OutputFile> {
   const project = await getProject(projectId);
   if (!project) throw new ProjectNotFoundError(projectId);
@@ -26,10 +29,10 @@ export async function saveCutOutput(projectId: string, video: Blob): Promise<Out
 
   const key = await saveBlob(video);
   const output: OutputFile = { kind: "video", key, createdAt: new Date().toISOString() };
+  const media: MediaState = { ...project.media, outputs: [...project.media.outputs, output] };
+  delete media.shorts;
   try {
-    await updateProject(projectId, {
-      media: { ...project.media, outputs: [...project.media.outputs, output] },
-    });
+    await updateProject(projectId, { media });
   } catch (e) {
     await deleteBlob(key).catch(() => {});
     throw e;
