@@ -55,7 +55,7 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
 
   const { project } = load;
   const statuses = projectStepStatuses(project);
-  const fromIdea = project.entry === 'idea';
+  const next = nextStep(project);
 
   return (
     <>
@@ -70,11 +70,21 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
 
       <Surface as="section" aria-labelledby={nextStepId} className="flex flex-col items-start gap-4">
         <h2 id={nextStepId}>{t.nextTitle}</h2>
-        <p className="max-w-2xl text-muted">{fromIdea ? t.ideaText : t.uploadText}</p>
-        <Button variant="primary" href={`/studio/${project.id}${fromIdea ? '/idea' : '/record/upload'}`}>
-          {fromIdea ? t.idea : t.upload}
+        <p className="max-w-2xl text-muted">{next.text}</p>
+        <Button variant="primary" href={`/studio/${project.id}${next.page}`}>
+          {next.label}
         </Button>
       </Surface>
     </>
   );
+}
+
+// The next step's text, button label and page under /studio/<id>. A raw-video project starts with its
+// upload; an idea project starts with the idea, goes on to the script once the idea is approved, and to
+// the recording, whose teleprompter shows the script, once the script is approved.
+function nextStep(project: Project): { text: string; label: string; page: string } {
+  if (project.entry === 'raw-video') return { text: t.uploadText, label: t.upload, page: '/record/upload' };
+  if (project.steps.idea !== 'approved') return { text: t.ideaText, label: t.idea, page: '/idea' };
+  if (project.steps.script !== 'approved') return { text: t.scriptText, label: t.script, page: '/script' };
+  return { text: t.recordText, label: t.record, page: '/record' };
 }
