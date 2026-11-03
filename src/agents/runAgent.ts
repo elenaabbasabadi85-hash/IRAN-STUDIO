@@ -13,6 +13,7 @@ import { agentSchemas, type AgentOutput, type AgentRole } from "@/agents/schemas
 import ideaFixture from "../../fixtures/idea.json";
 import scriptFixture from "../../fixtures/script.json";
 import testFixture from "../../fixtures/test.json";
+import writerFixture from "../../fixtures/writer.json";
 
 // Each readFile gets its literal path right in the call, never built from the role string, so
 // Next.js file tracing ships exactly these .md files with the server function on Vercel.
@@ -21,6 +22,7 @@ const PROMPTS = {
   test: () => readFile(path.join(process.cwd(), "prompts", "test.md"), "utf8"),
   idea: () => readFile(path.join(process.cwd(), "prompts", "idea.md"), "utf8"),
   script: () => readFile(path.join(process.cwd(), "prompts", "script.md"), "utf8"),
+  writer: () => readFile(path.join(process.cwd(), "prompts", "writer.md"), "utf8"),
 } satisfies Record<AgentRole, () => Promise<string>>;
 
 // Imported, not read from disk, so the samples are bundled like fixtures/transcript.json.
@@ -28,6 +30,7 @@ const FIXTURES = {
   test: testFixture,
   idea: ideaFixture,
   script: scriptFixture,
+  writer: writerFixture,
 } satisfies Record<AgentRole, unknown>;
 
 /** With less time than this left, another call can't realistically finish. */

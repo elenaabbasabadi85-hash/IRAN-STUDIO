@@ -6,8 +6,9 @@
 // برگرداند، و از همین اسکیما JSON Schema می‌سازد تا به مدل بگوییم دقیقاً چه شکلی می‌خواهیم.
 // یک منبع حقیقت برای هر سه کار: اعتبارسنجی، پیام خطا و دستور به مدل.
 import { z } from "zod";
-import type { ChannelProfile, IdeaCard, Script, ScriptSection } from "@/core/types";
+import type { ChannelProfile, IdeaCard, PublishKit, Script, ScriptSection } from "@/core/types";
 import { estimateSeconds, scriptTarget } from "@/agents/scriptTiming";
+import { allDifferent, collapseSpaces, coverWordCount, normalizeHashtag } from "@/agents/writerRules";
 
 // Mirrors MAX_LENGTH, LENGTH_MIN, LENGTH_MAX and the color rule in src/app/studio/new/schema.ts
 // (Platform lane). Copied, not imported, so this lane never depends on another lane's files.
@@ -141,12 +142,104 @@ export const sectionMatchesContract: Same<ScriptOutput["sections"][number], Scri
 // chosenHook and edited are optional in Script and stay unset, so the output is assignable to it, not the same.
 export const scriptMatchesContract: [ScriptOutput] extends [Script] ? true : false = true;
 
+// ورودی نویسنده: ایده و سناریویی که انسان تأیید کرده، با همان اسکیماها و همان حدها؛ هیچ حدی شل نمی‌شود.
+// قلاب‌ها و cta خود اسکیمای خروجی سناریو هستند، پس از آن جدا نمی‌شوند. بخش‌ها از scriptSectionDraftSchema
+// می‌آیند، چون transform خروجی سناریو شناسه‌ی تازه می‌سازد. z.object کلیدهای اضافه را دور می‌ریزد:
+// id و references ایده، و id، estSeconds و edited سناریو.
+export const writerInputSchema = z.object({
+  idea: ideaDraftSchema,
+  script: z.object({
+    hooks: scriptOutputSchema.shape.hooks,
+    chosenHook: z.number().int().min(0).max(HOOK_COUNT - 1).optional(),
+    sections: z.array(scriptSectionDraftSchema).min(SECTION_COUNT.min).max(SECTION_COUNT.max),
+    cta: scriptOutputSchema.shape.cta,
+  }),
+});
+
+// چرا دقیقاً پنج عنوان؟ مثل ایده‌ها: آن‌قدر تنوع که یوتیوبر میان پرسش، فایده، تضاد، آموزش و کنجکاوی
+// انتخاب واقعی داشته باشد، و آن‌قدر کم که سریع خوانده شود. چرا سه متن کاور؟ کاور کنار عنوان انتخاب‌شده
+// می‌نشیند؛ سه گزینه انتخاب واقعی است و هر سه با یک نگاه خوانده می‌شوند.
+// اگر این عددها عوض شدند، prompts/writer.md را هم عوض کن.
+const TITLE_COUNT = 5;
+const COVER_COUNT = 3;
+// کمینه‌ی سه: یوتیوب سه هشتگ اول را بالای عنوان نشان می‌دهد. بیشینه‌ی ده: یوتیوب با بیشتر از ۱۵ هشتگ همه
+// را نادیده می‌گیرد، و ده جا می‌گذارد تا یوتیوبر هشتگ‌های ثابت کانالش را هم اضافه کند.
+const HASHTAG_COUNT = { min: 3, max: 10 } as const;
+// عنوان و کاور سخت‌گیرند، چون قاعده‌ی برندند: یوتیوب عنوان بلندتر از ۶۰ نویسه را در جست‌وجو کوتاه می‌کند،
+// فونت نمایشی کاور فقط تا چهار کلمه مجاز است و سازنده‌ی کاور بیشتر از MAX_COVER_CHARS در
+// src/video/cover/wrap.ts را نگه نمی‌دارد. توضیحات و هشتگ دست‌ودل‌بازند، چون هر تلاش دوباره یک درخواست از
+// سهمیه‌ی رایگان است؛ از سقف ۵۰۰۰ یوتیوب هم برای فصل‌ها و لینک‌های خود یوتیوبر جا می‌ماند.
+export const WRITER_LIMITS = {
+  title: 60,
+  coverChars: 60,
+  coverWords: 4,
+  description: 2000,
+  hashtag: 40,
+} as const;
+
+// مثل ایده و سناریو: قاعده‌های شمردنی را کد می‌سنجد و قضاوت («عنوان ارزش کلیک دارد؟»، «کاور حرف تازه‌ای
+// می‌زند؟») در پرامپت می‌ماند. چرا فصل نه؟ این دستیار پیش از ضبط اجرا می‌شود و زمان واقعی بخش‌ها را
+// نمی‌داند؛ فصل‌ها بعداً از زمان‌های رونوشت ویدیو ساخته می‌شوند. chosenTitle را هم انسان در صفحه‌ی انتشار
+// انتخاب می‌کند. اگر مدل هر کدام را بفرستد، z.object دورش می‌ریزد.
+export const writerOutputSchema = z
+  .object({
+    titles: z
+      .array(
+        z.string().trim().min(1).max(WRITER_LIMITS.title, {
+          message: `هر عنوان حداکثر ${WRITER_LIMITS.title} نویسه باشد؛ کوتاه‌ترش کن و کلمه‌ی مهم را اول بیاور.`,
+        }),
+      )
+      .length(TITLE_COUNT)
+      .refine(allDifferent, { message: "عنوان‌ها نباید تکراری باشند؛ عنوان تکراری را با عنوانی از نوع دیگر عوض کن." }),
+    // چرا شمردن کلمه در کد؟ مدل در شمردن قابل‌اعتماد نیست و کاور پنج‌کلمه‌ای قاعده‌ی برند را می‌شکند.
+    coverTexts: z
+      .array(
+        text(WRITER_LIMITS.coverChars).refine((cover) => coverWordCount(cover) <= WRITER_LIMITS.coverWords, {
+          message: `هر متن کاور حداکثر ${WRITER_LIMITS.coverWords} کلمه باشد؛ کوتاه‌ترش کن.`,
+        }),
+      )
+      .length(COVER_COUNT)
+      .refine(allDifferent, { message: "متن‌های کاور نباید تکراری باشند؛ متن تکراری را با حرف تازه‌ای عوض کن." }),
+    description: text(WRITER_LIMITS.description),
+    // چرا هشتگ را کد مرتب می‌کند؟ مدل گاهی # یا فاصله می‌گذارد. درست کردنش هزینه‌ای ندارد، ولی رد کردنش
+    // یک درخواست از سهمیه‌ی رایگان است؛ شکل ذخیره‌شده هم همانی می‌شود که صفحه‌ی انتشار نشان می‌دهد.
+    // تکرار بعد از مرتب کردن («#یوتیوب» و «یوتیوب») تکرار واقعی است و رد می‌شود. کمینه را دوباره
+    // می‌سنجیم، چون هشتگی که فقط # بود حذف می‌شود. pipe، نه preprocess: با io: "input" سمت ورودی pipe در
+    // JSON Schema می‌آید و مدل تعداد و طول را می‌بیند؛ preprocess را JSON Schema نمی‌تواند نشان دهد.
+    hashtags: z
+      .array(z.string().max(WRITER_LIMITS.hashtag))
+      .min(HASHTAG_COUNT.min)
+      .max(HASHTAG_COUNT.max)
+      .transform((tags) => tags.map(normalizeHashtag).filter(Boolean))
+      .pipe(
+        z
+          .array(z.string())
+          .min(HASHTAG_COUNT.min, { message: `دست‌کم ${HASHTAG_COUNT.min} هشتگ غیرخالی بنویس.` })
+          .refine(allDifferent, { message: "هشتگ‌ها نباید تکراری باشند؛ هشتگ تکراری را با هشتگی مشخص‌تر عوض کن." }),
+      ),
+  })
+  // چرا در کد؟ بیننده کاور و عنوان را کنار هم می‌بیند، پس کاوری که همان عنوان است هیچ چیزی اضافه نمی‌کند.
+  // یکسان بودن را کد مطمئن می‌سنجد (بعد از trim و یکی کردن فاصله‌ها)؛ «حرف تازه» قضاوت است و در پرامپت می‌ماند.
+  .refine(
+    ({ titles, coverTexts }) => {
+      const sameAsTitle = new Set(titles.map(collapseSpaces));
+      return coverTexts.every((cover) => !sameAsTitle.has(collapseSpaces(cover)));
+    },
+    { path: ["coverTexts"], message: "متن کاور نباید همان عنوان باشد؛ چیزی بنویس که عنوان نمی‌گوید." },
+  );
+
+type WriterOutput = z.output<typeof writerOutputSchema>;
+
+// chosenTitle and chapters are optional in PublishKit and stay unset, so the output is assignable to it, not the same.
+export const publishKitMatchesContract: [WriterOutput] extends [PublishKit] ? true : false = true;
+
 // The agents the route accepts. A role is added here together with its prompt in prompts/ and its
 // sample in fixtures/; runAgent fails to compile until all three exist.
 export const agentSchemas = {
   test: testOutputSchema,
   idea: ideaOutputSchema,
   script: scriptOutputSchema,
+  writer: writerOutputSchema,
 } as const;
 
 export type AgentRole = keyof typeof agentSchemas;
@@ -173,6 +266,14 @@ function inputStep<T>(schema: z.ZodType<T>, prepare: (input: T, channel: Channel
 export const agentInputs: Partial<Record<AgentRole, InputStep>> = {
   // طول هدف را کد حساب می‌کند و کنار ایده می‌فرستد؛ src/agents/scriptTiming.ts را ببین.
   script: inputStep(scriptInputSchema, ({ idea }, channel) => ({ idea, target: scriptTarget(channel.avgLengthMin) })),
+  // چرا فقط قلاب انتخاب‌شده؟ فقط همین قلاب در ویدیو گفته می‌شود؛ با دو قلاب دیگر، عنوان ممکن است چیزی را
+  // قول بدهد که ویدیو نمی‌گوید، و توکن هم هدر می‌رود. قلاب انتخاب‌شده، یا اگر انتخاب نشده اولی: همان قاعده‌ی
+  // scriptToPrompterText در src/video/record/scriptText.ts؛ این کپی محلی باید با آن هم‌گام بماند. شناسه و
+  // estSeconds بخش‌ها هم نمی‌رسند: این دستیار فصل نمی‌نویسد و تخمین زمان به کارش نمی‌آید.
+  writer: inputStep(writerInputSchema, ({ idea, script }) => ({
+    idea,
+    script: { hook: script.hooks[script.chosenHook ?? 0], sections: script.sections, cta: script.cta },
+  })),
 };
 
 export interface AgentResponse<R extends AgentRole = AgentRole> {

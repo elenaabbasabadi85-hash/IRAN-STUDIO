@@ -54,7 +54,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/agents/[rol
     return fail(400, t.errors.badRequest);
   }
 
-  // Roles with an input step (script) send the model only the checked, prepared input; the others
+  // Roles with an input step (script, writer) send the model only the checked, prepared input; the others
   // pass their input on unchanged, as before.
   let input = parsed.data.input;
   const prepareInput = agentInputs[role];
