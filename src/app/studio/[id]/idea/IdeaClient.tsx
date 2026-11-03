@@ -240,7 +240,7 @@ export function IdeaClient({ projectId }: { projectId: string }) {
       </header>
 
       <div className="flex flex-col items-start gap-3">
-        {/* The only red button until there are ideas; after that the red one is «تأیید ایده». */}
+        {/* The only red button until there are ideas; after that the red one is «ایده رو تأیید کن». */}
         <Button
           variant={hasWork ? "secondary" : "primary"}
           size={hasWork ? "md" : "lg"}
