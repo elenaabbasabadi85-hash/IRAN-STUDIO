@@ -1,6 +1,7 @@
 // Plain assertions, no test framework: run with `node src/video/cuts.test.mjs` (Node 22.18+).
 import assert from "node:assert/strict";
 import { findSilenceCuts, keptSegments, normalizeCuts, totalSeconds } from "./cuts.ts";
+import { cutFilterGraph } from "./silence/cutFilter.ts";
 
 /** @param {[string, number, number][]} list */
 const transcript = (list) => ({ language: "fa", words: list.map(([w, start, end]) => ({ w, start, end })) });
@@ -124,6 +125,23 @@ function assertSortedNoOverlap(ranges) {
   assert.equal(totalSeconds(kept), 8);
   assert.deepEqual(keptSegments([], 3), [{ start: 0, end: 3 }]);
   assert.deepEqual(keptSegments([{ start: 0, end: 3, reason: "manual" }], 3), []);
+}
+
+// The filter: a WebM gets a fixed rate before every trim (MediaRecorder declares none); other files keep theirs.
+{
+  const kept = [{ start: 0, end: 1.5 }, { start: 2, end: 3 }];
+  const mp4 = cutFilterGraph(kept, "video/mp4");
+  assert.equal(
+    mp4,
+    "[0:v:0]trim=start=0:end=1.5,setpts=PTS-STARTPTS[v0];[0:a:0]atrim=start=0:end=1.5,asetpts=PTS-STARTPTS[a0];" +
+      "[0:v:0]trim=start=2:end=3,setpts=PTS-STARTPTS[v1];[0:a:0]atrim=start=2:end=3,asetpts=PTS-STARTPTS[a1];" +
+      "[v0][a0][v1][a1]concat=n=2:v=1:a=1[vc][a];[vc]scale=trunc(iw/2)*2:trunc(ih/2)*2[v]",
+  );
+  assert.ok(!cutFilterGraph(kept, "video/quicktime").includes("fps="));
+  assert.ok(!cutFilterGraph(kept, "").includes("fps="));
+  const expected = mp4.replaceAll("[0:v:0]trim", "[0:v:0]fps=30,trim");
+  assert.equal(cutFilterGraph(kept, "video/webm"), expected);
+  assert.equal(cutFilterGraph(kept, "video/webm;codecs=vp9,opus"), expected);
 }
 
 console.log("cuts tests passed");
