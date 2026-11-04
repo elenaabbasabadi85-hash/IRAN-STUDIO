@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEve
 import { Button } from '@/components/ui/Button';
 import type { Project } from '@/core/types';
 import { getBlob, getProject } from '@/storage/db';
+import { savedFacelessAudioKey } from '../faceless/saveFaceless';
 import { formatBytes, formatDuration } from '../record/mime';
 import { removeRawVideo } from '../removeRawVideo';
 import { isQuotaError, saveRawVideo } from '../saveRawVideo';
@@ -180,6 +181,7 @@ export default function UploadScreen({ projectId }: { projectId: string }) {
   const handleSave = async () => {
     if (!selected) return;
     if (rawVideoKey && !window.confirm(strings.replaceConfirm)) return;
+    if (savedFacelessAudioKey(project.media) && !window.confirm(strings.replaceAudioConfirm)) return;
     setActionError(null);
     setNotice(null);
     // The estimate is rough, so only an obvious shortfall is stopped before writing.

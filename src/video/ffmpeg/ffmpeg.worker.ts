@@ -1,7 +1,9 @@
 // Runs one ffmpeg job off the main thread. A fresh worker is used per job and
 // terminated afterwards, which also frees the wasm memory.
 import {
+  INPUT_DIR,
   INPUT_PATH_TOKEN,
+  extraInputPath,
   type CoreURLs,
   type FFmpegJobRequest,
   type FFmpegWorkerMessage,
@@ -11,6 +13,7 @@ import {
 // The slice of the ffmpeg-core module API used here (full types: @ffmpeg/types).
 interface FFmpegCore {
   FS: {
+    analyzePath(path: string): { exists: boolean };
     mkdir(path: string): void;
     mount(type: unknown, options: { files: File[] }, mountPoint: string): void;
     writeFile(path: string, data: Uint8Array): void;
@@ -27,7 +30,6 @@ interface FFmpegCore {
 
 type FFmpegCoreFactory = (overrides: { mainScriptUrlOrBlob: string }) => Promise<FFmpegCore>;
 
-const INPUT_DIR = "/input";
 const LOG_TAIL_LINES = 6;
 const DURATION_RE = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/;
 
@@ -49,16 +51,28 @@ async function loadCore({ coreURL, wasmURL, workerURL }: CoreURLs): Promise<FFmp
 }
 
 /** WORKERFS reads the File lazily, so a large video isn't copied into wasm memory. */
-async function attachInput(ffmpeg: FFmpegCore, file: File): Promise<{ path: string; fs: InputFs }> {
+async function attachInput(
+  ffmpeg: FFmpegCore,
+  file: File,
+  extraFiles: File[] = [],
+): Promise<{ path: string; fs: InputFs }> {
   const workerfs = ffmpeg.FS.filesystems.WORKERFS;
   if (workerfs) {
     try {
       ffmpeg.FS.mkdir(INPUT_DIR);
-      ffmpeg.FS.mount(workerfs, { files: [file] }, INPUT_DIR);
+      ffmpeg.FS.mount(workerfs, { files: [file, ...extraFiles] }, INPUT_DIR);
       return { path: `${INPUT_DIR}/${file.name}`, fs: "workerfs" };
     } catch {
       // Fall back to the in-memory copy below.
     }
+  }
+  if (extraFiles.length > 0) {
+    // The job's arguments name the extra files by their path in INPUT_DIR, so they all go there.
+    if (!ffmpeg.FS.analyzePath(INPUT_DIR).exists) ffmpeg.FS.mkdir(INPUT_DIR);
+    for (const input of [file, ...extraFiles]) {
+      ffmpeg.FS.writeFile(extraInputPath(input.name), new Uint8Array(await input.arrayBuffer()));
+    }
+    return { path: extraInputPath(file.name), fs: "memfs" };
   }
   ffmpeg.FS.writeFile("input", new Uint8Array(await file.arrayBuffer()));
   return { path: "input", fs: "memfs" };
@@ -88,7 +102,7 @@ scope.onmessage = async ({ data: job }) => {
     ffmpeg.setProgress(({ time }) => scope.postMessage({ type: "progress", seconds: time / 1e6 }));
 
     const mountStart = performance.now();
-    const input = await attachInput(ffmpeg, job.file);
+    const input = await attachInput(ffmpeg, job.file, job.extraFiles);
     const mountMs = performance.now() - mountStart;
 
     const args = job.args.map((arg) => (arg === INPUT_PATH_TOKEN ? input.path : arg));

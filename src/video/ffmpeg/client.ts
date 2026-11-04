@@ -71,6 +71,8 @@ export function canUseMultiThread(): boolean {
 
 export interface FFmpegJob {
   file: File;
+  /** More input files; ffmpeg finds them at extraInputPath(name). */
+  extraFiles?: File[];
   mode: ThreadMode;
   /** ffmpeg arguments; use INPUT_PATH_TOKEN where the input path goes. */
   args: string[];
@@ -99,6 +101,7 @@ export interface FFmpegJobResult {
  */
 export async function runFFmpegJob({
   file,
+  extraFiles,
   mode,
   args,
   outputPath,
@@ -153,7 +156,7 @@ export async function runFFmpegJob({
             break;
         }
       };
-      const request: FFmpegJobRequest = { core, file, args, outputPath, timeoutMs };
+      const request: FFmpegJobRequest = { core, file, extraFiles, args, outputPath, timeoutMs };
       worker.postMessage(request);
     });
   } finally {

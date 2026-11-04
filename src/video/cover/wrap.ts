@@ -10,6 +10,9 @@ export interface FitOptions {
   maxSize: number;
   minSize: number;
   step: number;
+  /** Set both to keep the whole block of lines inside a height. */
+  maxHeight?: number;
+  lineHeight?: number;
 }
 
 export interface FittedText {
@@ -62,12 +65,13 @@ export function wrapLines(text: string, maxWidth: number, measure: (line: string
 export function fitText(
   text: string,
   measure: (line: string, size: number) => number,
-  { maxWidth, maxLines, maxSize, minSize, step }: FitOptions,
+  { maxWidth, maxLines, maxSize, minSize, step, maxHeight = Infinity, lineHeight = 1 }: FitOptions,
 ): FittedText {
   for (let size = maxSize; size > minSize; size -= step) {
     const width = (line: string) => measure(line, size);
     const lines = wrapLines(text, maxWidth, width);
-    if (lines.length <= maxLines && lines.every((line) => width(line) <= maxWidth)) return { size, lines };
+    const fits = lines.length <= maxLines && lines.length * size * lineHeight <= maxHeight;
+    if (fits && lines.every((line) => width(line) <= maxWidth)) return { size, lines };
   }
   const lines = wrapLines(text, maxWidth, (line) => measure(line, minSize));
   return { size: minSize, lines: lines.slice(0, maxLines) };

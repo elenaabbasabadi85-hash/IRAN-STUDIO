@@ -9,17 +9,18 @@ export async function removeRawVideo(projectId: string): Promise<void> {
   if (!project) throw new ProjectNotFoundError(projectId);
   if (!project.media) return;
 
-  const { rawVideoKey, audioKey } = project.media;
+  const { rawVideoKey, audioKey, slides } = project.media;
   const media: MediaState = { ...project.media };
   delete media.rawVideoKey;
   delete media.audioKey;
   delete media.transcript;
   delete media.cuts;
   delete media.shorts;
+  delete media.slides;
   await updateProject(projectId, { media });
 
   // A leftover blob only wastes space, so a failure here must not fail the removal.
-  for (const key of [rawVideoKey, audioKey]) {
+  for (const key of [rawVideoKey, audioKey, ...(slides ?? []).map((slide) => slide.imageKey)]) {
     if (key) await deleteBlob(key).catch(() => {});
   }
 }
