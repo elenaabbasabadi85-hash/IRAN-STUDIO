@@ -15,20 +15,22 @@ export function isQuotaError(error: unknown): boolean {
   return error.name === 'QuotaExceededError' || (inner instanceof Error && inner.name === 'QuotaExceededError');
 }
 
-// Browser only. Stores the video and points the project at it. The transcript, cuts, shorts
-// and extracted audio belong to the old video, so they are dropped. Old blobs are deleted only
-// after the new video is safely saved.
+// Browser only. Stores the video and points the project at it. The transcript, cuts, shorts,
+// slides and extracted audio belong to the old video, so they are dropped. Old blobs are deleted
+// only after the new video is safely saved.
 export async function saveRawVideo(projectId: string, blob: Blob, mode: RecordingMode): Promise<string> {
   const project = await getProject(projectId);
   if (!project) throw new ProjectNotFoundError(projectId);
 
   const previousVideoKey = project.media?.rawVideoKey;
   const previousAudioKey = project.media?.audioKey;
+  const previousSlideKeys = (project.media?.slides ?? []).map((slide) => slide.imageKey);
   const key = await saveBlob(blob);
   const media: MediaState = { ...project.media, mode, rawVideoKey: key, outputs: project.media?.outputs ?? [] };
   delete media.transcript;
   delete media.cuts;
   delete media.shorts;
+  delete media.slides;
   delete media.audioKey;
   try {
     await updateProject(projectId, { media });
@@ -38,7 +40,7 @@ export async function saveRawVideo(projectId: string, blob: Blob, mode: Recordin
   }
 
   // A leftover blob only wastes space, so a failure here must not fail the save.
-  for (const oldKey of [previousVideoKey, previousAudioKey]) {
+  for (const oldKey of [previousVideoKey, previousAudioKey, ...previousSlideKeys]) {
     if (oldKey && oldKey !== key) await deleteBlob(oldKey).catch(() => {});
   }
   return key;

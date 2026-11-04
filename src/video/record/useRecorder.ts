@@ -61,12 +61,13 @@ export function useRecorder(stream: MediaStream | null) {
       setPhase('idle');
       return;
     }
-    const mimeType = pickRecorderMimeType();
+    const audioOnly = stream.getVideoTracks().length === 0;
+    const mimeType = pickRecorderMimeType(audioOnly);
     let recorder: MediaRecorder;
     try {
       recorder = new MediaRecorder(stream, {
         ...(mimeType ? { mimeType } : {}),
-        videoBitsPerSecond: 2_500_000,
+        ...(audioOnly ? {} : { videoBitsPerSecond: 2_500_000 }),
         audioBitsPerSecond: 128_000,
       });
     } catch {
@@ -90,7 +91,7 @@ export function useRecorder(stream: MediaStream | null) {
       const durationMs = currentElapsed();
       bankedMsRef.current = durationMs;
       segmentStartRef.current = null;
-      const type = recorder.mimeType || mimeType || 'video/webm';
+      const type = recorder.mimeType || mimeType || (audioOnly ? 'audio/webm' : 'video/webm');
       const blob = new Blob(chunksRef.current, { type });
       chunksRef.current = [];
       recorderRef.current = null;

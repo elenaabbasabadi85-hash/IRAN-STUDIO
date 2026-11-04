@@ -31,7 +31,8 @@ function stopStream(stream: MediaStream | null): void {
 }
 
 // Owns the camera/microphone stream. Every track is stopped on stop() and on unmount.
-export function useMediaDevices() {
+// With audioOnly the camera is never requested, so the browser does not ask for it or turn it on.
+export function useMediaDevices(audioOnly = false) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<DeviceErrorKind | null>(null);
@@ -62,9 +63,11 @@ export function useMediaDevices() {
 
     try {
       const next = await navigator.mediaDevices.getUserMedia({
-        video: nextCameraId
-          ? { deviceId: { exact: nextCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-          : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: audioOnly
+          ? false
+          : nextCameraId
+            ? { deviceId: { exact: nextCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+            : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: {
           ...(nextMicId ? { deviceId: { exact: nextMicId } } : {}),
           echoCancellation: true,
@@ -93,7 +96,7 @@ export function useMediaDevices() {
     } finally {
       if (request === requestRef.current) setStarting(false);
     }
-  }, []);
+  }, [audioOnly]);
 
   const stop = useCallback(() => {
     requestRef.current++;
@@ -101,6 +104,7 @@ export function useMediaDevices() {
     streamRef.current = null;
     setStream(null);
     setStarting(false);
+    setError(null);
   }, []);
 
   // Runs on unmount and also when Next.js hides the page with <Activity> after navigation,

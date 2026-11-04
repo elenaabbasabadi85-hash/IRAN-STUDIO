@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import type { Project } from '@/core/types';
 import { getBlob, getProject } from '@/storage/db';
+import { saveFacelessAudio, savedFacelessAudioKey } from '../faceless/saveFaceless';
 import { isQuotaError, saveRawVideo } from '../saveRawVideo';
 import { fixInfiniteDuration, formatBytes, formatDuration } from './mime';
 import { scriptToPrompterText } from './scriptText';
@@ -33,8 +34,9 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [audioOnly, setAudioOnly] = useState(false);
 
-  const devices = useMediaDevices();
+  const devices = useMediaDevices(audioOnly);
   const recorder = useRecorder(devices.stream);
   const { phase } = recorder;
 
@@ -48,6 +50,7 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
           return;
         }
         setLoad({ status: 'ready', project });
+        setAudioOnly(project.media?.mode === 'faceless');
         setPrompterText(scriptToPrompterText(project.script));
       })
       .catch(() => {
@@ -59,27 +62,29 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   const rawVideoKey = load.status === 'ready' ? load.project.media?.rawVideoKey : undefined;
+  const savedAudioKey = load.status === 'ready' ? savedFacelessAudioKey(load.project.media) : undefined;
+  const storedKey = rawVideoKey ?? savedAudioKey;
 
   useEffect(() => {
-    if (!rawVideoKey) return;
+    if (!storedKey) return;
     let active = true;
     let url: string | null = null;
-    getBlob(rawVideoKey)
+    getBlob(storedKey)
       .then((blob) => {
         if (!active) return;
         url = blob ? URL.createObjectURL(blob) : null;
-        setStored({ key: rawVideoKey, url });
+        setStored({ key: storedKey, url });
       })
       .catch(() => {
-        if (active) setStored({ key: rawVideoKey, url: null });
+        if (active) setStored({ key: storedKey, url: null });
       });
     return () => {
       active = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [rawVideoKey]);
+  }, [storedKey]);
 
-  const storedVideo = stored && stored.key === rawVideoKey ? stored : null;
+  const storedMedia = stored && stored.key === storedKey ? stored : null;
 
   // Next.js keeps this page's state when it is hidden after navigation; start fresh on return.
   useLayoutEffect(() => {
@@ -138,21 +143,40 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
     recorder.reset();
   };
 
+  // The stream has to match the choice, so the old devices are released first.
+  const changeMode = (nextAudioOnly: boolean) => {
+    devices.stop();
+    recorder.reset();
+    setAudioOnly(nextAudioOnly);
+    setSavedNotice(false);
+    setSaveError(null);
+  };
+
+  const replaceConfirm = audioOnly
+    ? rawVideoKey
+      ? strings.faceless.replaceVideoConfirm
+      : strings.faceless.replaceAudioConfirm
+    : savedAudioKey
+      ? strings.faceless.replaceAudioConfirm
+      : strings.recorder.replaceConfirm;
+
   const handleSave = async () => {
     const take = recorder.recording;
     if (!take) return;
-    if (rawVideoKey && !window.confirm(strings.recorder.replaceConfirm)) return;
+    if (storedKey && !window.confirm(replaceConfirm)) return;
+    const errors = audioOnly ? strings.faceless.errors : strings.recorder.errors;
     setSaving(true);
     setSaveError(null);
     try {
-      await saveRawVideo(projectId, take.blob, 'camera');
+      if (audioOnly) await saveFacelessAudio(projectId, take.blob);
+      else await saveRawVideo(projectId, take.blob, 'camera');
       const updated = await getProject(projectId);
       devices.stop();
       recorder.reset();
       if (updated) setLoad({ status: 'ready', project: updated });
       setSavedNotice(true);
     } catch (error) {
-      setSaveError(isQuotaError(error) ? strings.recorder.errors.quota : strings.recorder.errors.saveFailed);
+      setSaveError(isQuotaError(error) ? errors.quota : errors.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -160,6 +184,8 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
 
   const deviceLabel = (label: string, index: number) =>
     label || strings.camera.deviceFallback.replace('{n}', String(index + 1));
+
+  const deviceErrors = audioOnly ? strings.faceless.mic.errors : strings.camera.errors;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 bg-[#F5F1EA] p-4 text-[#041E42] sm:p-6">
@@ -178,6 +204,22 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
         </nav>
       </header>
 
+      {phase === 'idle' && (
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend className="font-bold">{strings.faceless.modeLegend}</legend>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2">
+              <input type="radio" name="record-mode" checked={!audioOnly} onChange={() => changeMode(false)} />
+              {strings.faceless.modeCamera}
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="record-mode" checked={audioOnly} onChange={() => changeMode(true)} />
+              {strings.faceless.modeFaceless}
+            </label>
+          </div>
+        </fieldset>
+      )}
+
       {/* Above the camera preview, so the eyes stay close to the lens. */}
       <Teleprompter
         text={prompterText}
@@ -188,8 +230,19 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
       />
 
       {phase !== 'stopped' && (
-        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-[#041E42]">
-          {devices.stream ? (
+        <div className={`relative w-full overflow-hidden rounded-lg bg-[#041E42] ${audioOnly ? 'h-56' : 'aspect-video'}`}>
+          {audioOnly ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center text-cream">
+              {devices.stream ? (
+                <p>{strings.faceless.mic.on}</p>
+              ) : (
+                <>
+                  <p>{devices.starting ? strings.faceless.mic.starting : strings.faceless.mic.off}</p>
+                  {!devices.starting && <Button onClick={() => devices.start()}>{strings.faceless.mic.enable}</Button>}
+                </>
+              )}
+            </div>
+          ) : devices.stream ? (
             <video
               ref={(video) => {
                 if (video && video.srcObject !== devices.stream) video.srcObject = devices.stream;
@@ -242,7 +295,7 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
 
       {devices.error && (
         <p role="alert" className="rounded border border-[#CD001A] p-3 text-[#CD001A]">
-          {strings.camera.errors[devices.error]}
+          {deviceErrors[devices.error]}
         </p>
       )}
       {recorder.failed && (
@@ -253,21 +306,23 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
 
       {devices.stream && phase !== 'stopped' && (
         <div className="flex flex-wrap gap-3 text-sm">
-          <label className="flex items-center gap-2">
-            {strings.camera.cameraLabel}
-            <select
-              value={devices.cameraId}
-              disabled={busy}
-              onChange={(event) => devices.start(event.target.value, devices.micId)}
-              className="max-w-56 rounded border border-[#8A8D91] bg-white p-1"
-            >
-              {devices.cameras.map((device, index) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {deviceLabel(device.label, index)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!audioOnly && (
+            <label className="flex items-center gap-2">
+              {strings.camera.cameraLabel}
+              <select
+                value={devices.cameraId}
+                disabled={busy}
+                onChange={(event) => devices.start(event.target.value, devices.micId)}
+                className="max-w-56 rounded border border-[#8A8D91] bg-white p-1"
+              >
+                {devices.cameras.map((device, index) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {deviceLabel(device.label, index)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex items-center gap-2">
             {strings.camera.micLabel}
             <select
@@ -319,14 +374,24 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
       {phase === 'stopped' && recorder.recording && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-bold">{strings.recorder.recordedTitle}</h2>
-          <video
-            key={recorder.recording.url}
-            src={recorder.recording.url}
-            controls
-            playsInline
-            onLoadedMetadata={(event) => fixInfiniteDuration(event.currentTarget)}
-            className="aspect-video w-full rounded-lg bg-black"
-          />
+          {audioOnly ? (
+            <audio
+              key={recorder.recording.url}
+              src={recorder.recording.url}
+              controls
+              onLoadedMetadata={(event) => fixInfiniteDuration(event.currentTarget)}
+              className="w-full"
+            />
+          ) : (
+            <video
+              key={recorder.recording.url}
+              src={recorder.recording.url}
+              controls
+              playsInline
+              onLoadedMetadata={(event) => fixInfiniteDuration(event.currentTarget)}
+              className="aspect-video w-full rounded-lg bg-black"
+            />
+          )}
           <p className="text-sm text-[#2B4C7E]">
             {strings.recorder.duration}: <span dir="ltr">{formatDuration(recorder.recording.durationSec)}</span>
             {' · '}
@@ -338,14 +403,20 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
             </p>
           )}
           <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="h-12 rounded bg-[#041E42] px-6 font-bold text-[#F5F1EA] disabled:opacity-40"
-            >
-              {saving ? strings.recorder.saving : strings.recorder.save}
-            </button>
+            {audioOnly ? (
+              <Button variant="primary" onClick={handleSave} loading={saving}>
+                {strings.faceless.save}
+              </Button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="h-12 rounded bg-[#041E42] px-6 font-bold text-[#F5F1EA] disabled:opacity-40"
+              >
+                {saving ? strings.recorder.saving : strings.recorder.save}
+              </button>
+            )}
             <button type="button" onClick={handleRetake} disabled={saving} className={secondaryButton}>
               {strings.recorder.retake}
             </button>
@@ -355,28 +426,51 @@ export default function RecordScreen({ projectId }: { projectId: string }) {
 
       {savedNotice && (
         <p role="status" className="rounded border border-[#2B4C7E] p-3">
-          {strings.recorder.saved}
+          {audioOnly ? strings.faceless.saved : strings.recorder.saved}
         </p>
       )}
 
       {rawVideoKey && phase !== 'stopped' && (
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-bold">{strings.current.title}</h2>
-          {storedVideo?.url ? (
+          {storedMedia?.url ? (
             <video
-              key={storedVideo.url}
-              src={storedVideo.url}
+              key={storedMedia.url}
+              src={storedMedia.url}
               controls
               playsInline
               preload="metadata"
               onLoadedMetadata={(event) => fixInfiniteDuration(event.currentTarget)}
               className="aspect-video w-full rounded-lg bg-black"
             />
-          ) : storedVideo ? (
+          ) : storedMedia ? (
             <p role="alert">{strings.current.loadError}</p>
           ) : (
             <p>{strings.loading}</p>
           )}
+        </section>
+      )}
+
+      {savedAudioKey && phase !== 'stopped' && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-bold">{strings.faceless.current.title}</h2>
+          {storedMedia?.url ? (
+            <audio
+              key={storedMedia.url}
+              src={storedMedia.url}
+              controls
+              preload="metadata"
+              onLoadedMetadata={(event) => fixInfiniteDuration(event.currentTarget)}
+              className="w-full"
+            />
+          ) : storedMedia ? (
+            <p role="alert">{strings.faceless.current.loadError}</p>
+          ) : (
+            <p>{strings.loading}</p>
+          )}
+          <Link href={`/studio/${projectId}/record/faceless`} className="w-fit font-bold underline">
+            {strings.faceless.current.toSlides}
+          </Link>
         </section>
       )}
     </main>

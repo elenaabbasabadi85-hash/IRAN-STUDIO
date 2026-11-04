@@ -8,11 +8,13 @@ const CANDIDATES = [
   'video/mp4',
 ];
 
-export function pickRecorderMimeType(): string | undefined {
+const AUDIO_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4;codecs=mp4a', 'audio/mp4'];
+
+export function pickRecorderMimeType(audioOnly = false): string | undefined {
   if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
     return undefined;
   }
-  return CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type));
+  return (audioOnly ? AUDIO_CANDIDATES : CANDIDATES).find((type) => MediaRecorder.isTypeSupported(type));
 }
 
 export function formatDuration(totalSeconds: number): string {
@@ -31,9 +33,9 @@ export function formatBytes(bytes: number): string {
   return `${mb.toFixed(1)} MB`;
 }
 
-// Chrome writes WebM files from MediaRecorder without a duration, so <video> reports Infinity
-// and the seek bar does not work. Seeking far past the end makes the browser compute it.
-export function fixInfiniteDuration(video: HTMLVideoElement): void {
+// Chrome writes WebM files from MediaRecorder without a duration, so <video> and <audio> report
+// Infinity and the seek bar does not work. Seeking far past the end makes the browser compute it.
+export function fixInfiniteDuration(video: HTMLMediaElement): void {
   if (video.duration !== Infinity) return;
   const onTimeUpdate = () => {
     video.removeEventListener('timeupdate', onTimeUpdate);

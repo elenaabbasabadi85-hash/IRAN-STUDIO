@@ -8,6 +8,14 @@ export type InputFs = "workerfs" | "memfs";
 /** Placeholder in `args` that the worker replaces with the input file's path inside ffmpeg's FS. */
 export const INPUT_PATH_TOKEN = "{input}";
 
+/** Where the input files sit inside ffmpeg's FS. */
+export const INPUT_DIR = "/input";
+
+/** The path of a file from extraFiles, for a job's arguments. */
+export function extraInputPath(name: string): string {
+  return `${INPUT_DIR}/${name}`;
+}
+
 export interface CoreURLs {
   coreURL: string;
   wasmURL: string;
@@ -18,6 +26,8 @@ export interface CoreURLs {
 export interface FFmpegJobRequest {
   core: CoreURLs;
   file: File;
+  /** More input files for a job that needs several, such as images and audio. Names must be unique. */
+  extraFiles?: File[];
   args: string[];
   outputPath: string;
   timeoutMs: number;

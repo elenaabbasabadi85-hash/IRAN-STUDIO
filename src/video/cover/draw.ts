@@ -68,16 +68,13 @@ function coverCrop(width: number, height: number) {
   return { sx: (width - sw) / 2, sy: (height - sh) / 2, sw, sh };
 }
 
-export function drawCover(ctx: CanvasRenderingContext2D, frame: CoverFrame, text: string, style: CoverStyle): void {
-  const { sx, sy, sw, sh } = coverCrop(frame.width, frame.height);
-  ctx.drawImage(frame.source, sx, sy, sw, sh, 0, 0, COVER_WIDTH, COVER_HEIGHT);
-
-  ctx.save();
-  ctx.globalAlpha = OVERLAY_OPACITY;
-  ctx.fillStyle = style.overlayColor;
-  ctx.fillRect(0, 0, COVER_WIDTH, COVER_HEIGHT);
-  ctx.restore();
-
+/** The text in the middle of the canvas, at the largest size that fits in maxLines. Also draws the faceless slides. */
+export function drawCenteredText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  style: CoverStyle,
+  maxLines: number = MAX_LINES,
+): void {
   const font = coverFont(text, style);
   const maxWidth = COVER_WIDTH - TEXT_MARGIN * 2;
   const { size, lines } = fitText(
@@ -86,7 +83,15 @@ export function drawCover(ctx: CanvasRenderingContext2D, frame: CoverFrame, text
       ctx.font = fontFor(fontSize, font);
       return ctx.measureText(line).width;
     },
-    { maxWidth, maxLines: MAX_LINES, maxSize: MAX_FONT_SIZE, minSize: MIN_FONT_SIZE, step: FONT_SIZE_STEP },
+    {
+      maxWidth,
+      maxLines,
+      maxSize: MAX_FONT_SIZE,
+      minSize: MIN_FONT_SIZE,
+      step: FONT_SIZE_STEP,
+      maxHeight: COVER_HEIGHT - TEXT_MARGIN * 2,
+      lineHeight: LINE_HEIGHT,
+    },
   );
 
   ctx.font = fontFor(size, font);
@@ -100,6 +105,19 @@ export function drawCover(ctx: CanvasRenderingContext2D, frame: CoverFrame, text
     // maxWidth only matters for one word too wide even at the smallest size: the canvas narrows it.
     ctx.fillText(line, COVER_WIDTH / 2, firstY + i * lineHeight, maxWidth);
   });
+}
+
+export function drawCover(ctx: CanvasRenderingContext2D, frame: CoverFrame, text: string, style: CoverStyle): void {
+  const { sx, sy, sw, sh } = coverCrop(frame.width, frame.height);
+  ctx.drawImage(frame.source, sx, sy, sw, sh, 0, 0, COVER_WIDTH, COVER_HEIGHT);
+
+  ctx.save();
+  ctx.globalAlpha = OVERLAY_OPACITY;
+  ctx.fillStyle = style.overlayColor;
+  ctx.fillRect(0, 0, COVER_WIDTH, COVER_HEIGHT);
+  ctx.restore();
+
+  drawCenteredText(ctx, text, style);
 }
 
 export function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {

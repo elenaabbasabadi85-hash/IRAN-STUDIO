@@ -11,6 +11,15 @@ const scaled = (line, size) => line.length * size;
 
 const options = { maxWidth: 100, maxLines: 3, maxSize: 20, minSize: 5, step: 5 };
 
+// A height limit makes the text smaller even when its lines would fit the count and the width.
+{
+  const words = "یک دو سه چهار پنج شش";
+  const tall = fitText(words, scaled, { maxWidth: 1000, maxLines: 6, maxSize: 100, minSize: 10, step: 10 });
+  const limited = fitText(words, scaled, { maxWidth: 1000, maxLines: 6, maxSize: 100, minSize: 10, step: 10, maxHeight: 100, lineHeight: 1.4 });
+  assert.ok(limited.size < tall.size);
+  assert.ok(limited.lines.length * limited.size * 1.4 <= 100);
+}
+
 // Words stay together until the next one would pass the width.
 {
   assert.deepEqual(wrapLines("سلام به همه", 100, fixed), ["سلام به", "همه"]);
