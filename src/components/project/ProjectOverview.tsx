@@ -80,11 +80,13 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
 }
 
 // The next step's text, button label and page under /studio/<id>. A raw-video project starts with its
-// upload; an idea project starts with the idea, goes on to the script once the idea is approved, and to
-// the recording, whose teleprompter shows the script, once the script is approved.
+// upload; an idea project starts with the idea, goes on to the script once the idea is approved, to the
+// publish texts once the script is approved, and to the recording, whose teleprompter shows the script,
+// once the texts are approved. The editor comes between the writer and the recording, but has no page yet.
 function nextStep(project: Project): { text: string; label: string; page: string } {
   if (project.entry === 'raw-video') return { text: t.uploadText, label: t.upload, page: '/record/upload' };
   if (project.steps.idea !== 'approved') return { text: t.ideaText, label: t.idea, page: '/idea' };
   if (project.steps.script !== 'approved') return { text: t.scriptText, label: t.script, page: '/script' };
+  if (project.steps.writer !== 'approved') return { text: t.writerText, label: t.writer, page: '/write' };
   return { text: t.recordText, label: t.record, page: '/record' };
 }
