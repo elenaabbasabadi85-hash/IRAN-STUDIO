@@ -16,11 +16,9 @@ const KEPT = "\uFFFC";
 
 // توکن لاتین: هر تکه‌ی بین فاصله‌ها که حرف لاتین، @ یا :// داره (4K، S24، لینک، ایمیل). یه
 // کاراکتر عوض‌شده توی لینک یعنی یه لینک دیگه، پس این توکن‌ها اصلاً دست نمی‌خورن، حتی «ي» یا
-// «٢» داخلشون. توکنی که خودش KEPT داره هم نگه داشته می‌شه، تا هر KEPT توی خط یه جانشین باشه.
+// «ك» داخلشون. توکنی که خودش KEPT داره هم نگه داشته می‌شه، تا هر KEPT توی خط یه جانشین باشه.
 const KEPT_TOKEN = /[A-Za-z@\uFFFC]|:\/\//;
 
-const DIGITS = "0123456789٠١٢٣٤٥٦٧٨٩";
-const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 const PERSIAN_MARK: Record<string, string> = { "?": "؟", ",": "،", ";": "؛" };
 
 // علامتی که پیش از اون (بدون فاصله‌ها و علامت‌های همون دنباله) حرف فارسی باشه: «چی ?» و «واقعا??».
@@ -36,8 +34,8 @@ const SEPARATE_MI = new RegExp(`(?<=^| )(ن?می) (?=[${LETTER}])`, "g");
 const SEPARATE_HA = new RegExp(`(?<=[${LETTER}]) (هایی?)(?= |$)`, "g");
 
 /**
- * Fixes Persian spelling that has one right answer: Arabic ي/ك, digits, the ezafe after «ه»,
- * separate «می»/«های», broken ZWNJs, extra spaces and Latin ?,; after Persian words. Latin words,
+ * Fixes Persian spelling that has one right answer: Arabic ي/ك, the ezafe after «ه», separate
+ * «می»/«های», broken ZWNJs, extra spaces and Latin ?,; after Persian words. Digits, Latin words,
  * links and emails stay exactly as they are, correct text comes back unchanged, and
  * normalize(normalize(x)) === normalize(x).
  */
@@ -57,13 +55,13 @@ function normalizeLine(line: string): string {
     return KEPT;
   });
 
-  // ۲. حرف‌ها و رقم‌ها، قبل از بقیه: قدم‌های بعدی دنبال «ی»، «ه» و رقم فارسی می‌گردن، پس
-  // «خانه ي من» فقط بعد از این قدم یه «ی» جدا داره که بشه چسبوندش.
+  // ۲. حرف‌ها، قبل از بقیه: قدم‌های بعدی دنبال «ی» و «ه» می‌گردن، پس «خانه ي من» فقط بعد از
+  // این قدم یه «ی» جدا داره که بشه چسبوندش. رقم‌ها عمداً دست نمی‌خورن (تصمیم تیم): زمان
+  // زیرنویس، فصل یوتیوب و هشتگ با همون رقم‌ها کار می‌کنن، و فارسی نشون دادن عدد کار نمایشه.
   s = s
     .replace(/[\u064A\u0649]/g, "ی")
     .replace(/\u0643/g, "ک")
-    .replace(/\u0647\u0654|\u06C0/g, `ه${ZWNJ}ی`)
-    .replace(/[0-9\u0660-\u0669]/g, (digit) => PERSIAN_DIGITS[DIGITS.indexOf(digit) % 10]);
+    .replace(/\u0647\u0654|\u06C0/g, `ه${ZWNJ}ی`);
 
   // ۳. فاصله و نیم‌فاصله، قبل از علامت‌ها و چسبوندن: اون‌ها دنبال دقیقاً یه فاصله و حرف آخر
   // واقعی کلمه‌ان، پس «کتاب‌ های» فقط بعد از پاک شدن نیم‌فاصله‌ی خراب «کتاب‌های» می‌شه.
