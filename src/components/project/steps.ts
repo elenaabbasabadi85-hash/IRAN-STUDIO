@@ -20,6 +20,7 @@ export function projectStartStep(project: Project): StepId {
 const STEP_PAGES: Partial<Record<StepId, string>> = {
   idea: '/idea',
   script: '/script',
+  writer: '/write',
   record: '/record',
   video: '/edit',
   publish: '/publish',
