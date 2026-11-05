@@ -1,5 +1,5 @@
 // Which OpenRouter models each agent uses, how creative each one may be, and how long it may take.
-// Slugs checked against https://openrouter.ai/api/v1/models on 2026-10-30. Free models (":free")
+// Slugs checked against https://openrouter.ai/api/v1/models on 2026-11-05. Free models (":free")
 // come and go, so check that list again if a model starts failing for every request.
 
 export type ModelRole = "idea" | "script" | "editor" | "writer" | "test";
@@ -23,12 +23,16 @@ const SHORT_RUN = { callTimeoutMs: 25_000, totalBudgetMs: 55_000 } as const;
 // دما (temperature) یعنی چقدر مدل از محتمل‌ترین کلمه فاصله بگیرد: بالاتر یعنی متنوع‌تر، پایین‌تر یعنی قابل‌پیش‌بینی‌تر.
 export const MODELS: Record<ModelRole, ModelConfig> = {
   // ایده: 0.8، بالاترین دما؛ این‌جا تنوع و غافلگیری از دقت مهم‌تر است.
+  // چرا هر تماس ۵۰ ثانیه و کل ۱۰۰ ثانیه؟ اگر مدل اصلی شلوغ باشد (۴۲۹)، مدل جایگزین باید هم برای
+  // جواب اول وقت داشته باشد و هم برای یک بار درست کردن آن با پیام خطا. با کلید واقعی (ایشوی #90)
+  // جواب اول nemotron حدود ۱۸ ثانیه طول کشید و تلاش دوم در سقف ۲۵ ثانیه تمام نشد.
   idea: {
     primary: "google/gemma-4-31b-it:free",
-    fallback: "thinkingmachines/inkling:free",
+    fallback: "nvidia/nemotron-3-ultra-550b-a55b:free",
     temperature: 0.8,
     maxTokens: 3000,
-    ...SHORT_RUN,
+    callTimeoutMs: 50_000,
+    totalBudgetMs: 100_000,
   },
   // متن ویدیو: 0.7؛ روایت باید زنده بماند، اما ترتیب بخش‌ها و زمان‌بندی نباید از دست برود.
   // چرا زمان بیشتر فقط برای سناریو؟ فقط این دستیار متن بلند می‌نویسد (تا SCRIPT_MAX_MINUTES در
@@ -38,7 +42,7 @@ export const MODELS: Record<ModelRole, ModelConfig> = {
   // است و پاسخ بریده یعنی JSON خراب و یک تلاش دوباره‌ی کامل؛ جلوی پرحرفی را سقف زمان می‌گیرد.
   script: {
     primary: "google/gemma-4-31b-it:free",
-    fallback: "thinkingmachines/inkling:free",
+    fallback: "nvidia/nemotron-3-ultra-550b-a55b:free",
     temperature: 0.7,
     maxTokens: 8000,
     callTimeoutMs: 90_000,
