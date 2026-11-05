@@ -10,6 +10,7 @@ import { extractJson } from "@/agents/extractJson";
 import { MODELS } from "@/agents/models.config";
 import { callOpenRouter, type ChatError, type ChatMessage } from "@/agents/openrouter";
 import { agentSchemas, type AgentOutput, type AgentRole } from "@/agents/schemas";
+import editorFixture from "../../fixtures/editor.json";
 import ideaFixture from "../../fixtures/idea.json";
 import scriptFixture from "../../fixtures/script.json";
 import testFixture from "../../fixtures/test.json";
@@ -23,6 +24,7 @@ const PROMPTS = {
   idea: () => readFile(path.join(process.cwd(), "prompts", "idea.md"), "utf8"),
   script: () => readFile(path.join(process.cwd(), "prompts", "script.md"), "utf8"),
   writer: () => readFile(path.join(process.cwd(), "prompts", "writer.md"), "utf8"),
+  editor: () => readFile(path.join(process.cwd(), "prompts", "editor.md"), "utf8"),
 } satisfies Record<AgentRole, () => Promise<string>>;
 
 // Imported, not read from disk, so the samples are bundled like fixtures/transcript.json.
@@ -31,6 +33,7 @@ const FIXTURES = {
   idea: ideaFixture,
   script: scriptFixture,
   writer: writerFixture,
+  editor: editorFixture,
 } satisfies Record<AgentRole, unknown>;
 
 /** With less time than this left, another call can't realistically finish. */
