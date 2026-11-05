@@ -3,9 +3,10 @@
 // filter. Re-encoding (instead of stream copy) lets cuts land on any frame, not only on
 // keyframes, so the result has no jumps or frozen frames at the joins.
 import type { CutSegment } from "@/core/types";
-import { keptSegments, totalSeconds, type TimeRange } from "@/video/cuts";
+import { keptSegments, totalSeconds } from "@/video/cuts";
 import { runFFmpegJob } from "@/video/ffmpeg/client";
 import { INPUT_PATH_TOKEN } from "@/video/ffmpeg/protocol";
+import { cutFilterGraph } from "@/video/silence/cutFilter";
 
 const OUTPUT_FILE = "cut.mp4";
 const OUTPUT_TYPE = "video/mp4";
@@ -48,21 +49,6 @@ export interface ApplyCutsResult {
 
 const MEMORY_RE = /out of memory|OOM|Cannot enlarge memory|Aborted\(\)/i;
 
-function filterGraph(kept: TimeRange[]): string {
-  const parts = kept.map(
-    ({ start, end }, i) =>
-      `[0:v:0]trim=start=${start}:end=${end},setpts=PTS-STARTPTS[v${i}];` +
-      `[0:a:0]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS[a${i}]`,
-  );
-  const inputs = kept.map((_, i) => `[v${i}][a${i}]`).join("");
-  // H.264 with yuv420p needs even dimensions; phone recordings are sometimes odd-sized.
-  return [
-    ...parts,
-    `${inputs}concat=n=${kept.length}:v=1:a=1[vc][a]`,
-    "[vc]scale=trunc(iw/2)*2:trunc(ih/2)*2[v]",
-  ].join(";");
-}
-
 /** Rejects with the signal's reason when cancelled, otherwise with ApplyCutsError. */
 export async function applyCuts({ video, cuts, duration, signal, onProgress }: ApplyCutsOptions): Promise<ApplyCutsResult> {
   const kept = keptSegments(cuts, duration);
@@ -76,7 +62,7 @@ export async function applyCuts({ video, cuts, duration, signal, onProgress }: A
       mode: "st",
       args: [
         "-i", INPUT_PATH_TOKEN,
-        "-filter_complex", filterGraph(kept),
+        "-filter_complex", cutFilterGraph(kept, video.type),
         "-map", "[v]",
         "-map", "[a]",
         "-c:v", "libx264",
