@@ -7,6 +7,7 @@
 // یک منبع حقیقت برای هر سه کار: اعتبارسنجی، پیام خطا و دستور به مدل.
 import { z } from "zod";
 import type { ChannelProfile, IdeaCard, PublishKit, Script, ScriptSection } from "@/core/types";
+import { PART_KEY, scriptParts, type EditSuggestion } from "@/agents/editorRules";
 import { estimateSeconds, scriptTarget } from "@/agents/scriptTiming";
 import { allDifferent, collapseSpaces, coverWordCount, normalizeHashtag } from "@/agents/writerRules";
 
@@ -142,18 +143,21 @@ export const sectionMatchesContract: Same<ScriptOutput["sections"][number], Scri
 // chosenHook and edited are optional in Script and stay unset, so the output is assignable to it, not the same.
 export const scriptMatchesContract: [ScriptOutput] extends [Script] ? true : false = true;
 
-// ورودی نویسنده: ایده و سناریویی که انسان تأیید کرده، با همان اسکیماها و همان حدها؛ هیچ حدی شل نمی‌شود.
+// سناریویی که انسان تأیید کرده، برای نویسنده و ویراستار، با همان اسکیماها و همان حدها؛ هیچ حدی شل نمی‌شود.
 // قلاب‌ها و cta خود اسکیمای خروجی سناریو هستند، پس از آن جدا نمی‌شوند. بخش‌ها از scriptSectionDraftSchema
 // می‌آیند، چون transform خروجی سناریو شناسه‌ی تازه می‌سازد. z.object کلیدهای اضافه را دور می‌ریزد:
-// id و references ایده، و id، estSeconds و edited سناریو.
+// id، estSeconds و edited سناریو (و در ورودی نویسنده، id و references ایده).
+const approvedScriptSchema = z.object({
+  hooks: scriptOutputSchema.shape.hooks,
+  chosenHook: z.number().int().min(0).max(HOOK_COUNT - 1).optional(),
+  sections: z.array(scriptSectionDraftSchema).min(SECTION_COUNT.min).max(SECTION_COUNT.max),
+  cta: scriptOutputSchema.shape.cta,
+});
+
+// ورودی نویسنده: ایده و سناریویی که انسان تأیید کرده.
 export const writerInputSchema = z.object({
   idea: ideaDraftSchema,
-  script: z.object({
-    hooks: scriptOutputSchema.shape.hooks,
-    chosenHook: z.number().int().min(0).max(HOOK_COUNT - 1).optional(),
-    sections: z.array(scriptSectionDraftSchema).min(SECTION_COUNT.min).max(SECTION_COUNT.max),
-    cta: scriptOutputSchema.shape.cta,
-  }),
+  script: approvedScriptSchema,
 });
 
 // چرا دقیقاً پنج عنوان؟ مثل ایده‌ها: آن‌قدر تنوع که یوتیوبر میان پرسش، فایده، تضاد، آموزش و کنجکاوی
@@ -233,6 +237,60 @@ type WriterOutput = z.output<typeof writerOutputSchema>;
 // chosenTitle and chapters are optional in PublishKit and stay unset, so the output is assignable to it, not the same.
 export const publishKitMatchesContract: [WriterOutput] extends [PublishKit] ? true : false = true;
 
+// ورودی ویراستار: سناریویی که انسان تأیید کرده؛ به مدل فقط بخش‌های گفتنی و دیدنی می‌رسد (agentInputs).
+export const editorInputSchema = z.object({ script: approvedScriptSchema });
+
+// چرا حداکثر ۲۰؟ یوتیوبر هر پیشنهاد را جدا می‌خواند و تصمیم می‌گیرد؛ ۲۰ پیشنهاد کمتر از دو دقیقه کار است
+// و در maxTokens هم جا می‌شود. فهرست خالی درست است: متن ممکن است از قبل یکدست باشد.
+// اگر این عدد عوض شد، prompts/editor.md را هم عوض کن.
+const SUGGESTION_MAX = 20;
+// آن‌قدر دست‌ودل‌باز که مدل رایگانِ کمی پرحرف رد نشود، و آن‌قدر سخت‌گیر که پیشنهاد نتواند یک پاراگراف
+// بازنویسی‌شده باشد. from حدود ۱۳ تا ۱۵ کلمه جا دارد، تا با کلمه‌های کناری در بخشش یکتا شود؛ to کمی بلندتر
+// است، چون در کانال رسمی فعل‌ها بلندتر می‌شوند («می‌ده» ← «می‌دهد»). part را الگوی PART_KEY محدود می‌کند.
+export const EDITOR_LIMITS = {
+  from: 80,
+  to: 100,
+  reason: 200,
+} as const;
+
+const NOT_EMPTY = "from و to نباید خالی باشند؛ اگر چیزی عوض نمی‌شود، آن پیشنهاد را حذف کن.";
+
+// مثل بقیه: قاعده‌های شمردنی را کد می‌سنجد و قضاوت («لحن یکدست‌تر شد؟»، «واقعاً غلط تایپی است؟») در پرامپت
+// می‌ماند. این‌که from واقعاً و فقط یک بار در همان بخش هست را این اسکیما نمی‌تواند بسنجد، چون ورودی را
+// نمی‌بیند؛ usableSuggestions در src/agents/editorRules.ts آن را می‌سنجد.
+const editSuggestionDraftSchema = z
+  .object({
+    part: z.string().trim().regex(PART_KEY, {
+      message: "part باید یکی از کلیدهای پیام کاربر باشد، مثل hook، title-2، text-2 یا cta.",
+    }),
+    from: z.string().trim().min(1, { message: NOT_EMPTY }).max(EDITOR_LIMITS.from, {
+      message: `from حداکثر ${EDITOR_LIMITS.from} نویسه باشد؛ فقط همان کلمه یا چند کلمه‌ای را بیاور که عوض می‌شود.`,
+    }),
+    to: z.string().trim().min(1, { message: NOT_EMPTY }).max(EDITOR_LIMITS.to, {
+      message: `to حداکثر ${EDITOR_LIMITS.to} نویسه باشد؛ فقط جایگزین همان تکه را بنویس، نه کل جمله را.`,
+    }),
+    reason: z.string().trim().min(1, { message: "برای هر پیشنهاد یک دلیل کوتاه بنویس." }).max(EDITOR_LIMITS.reason, {
+      message: `دلیل حداکثر ${EDITOR_LIMITS.reason} نویسه باشد؛ در یک جمله‌ی کوتاه بنویس.`,
+    }),
+  })
+  .refine(({ from, to }) => from !== to, {
+    path: ["to"],
+    message: "to باید با from فرق داشته باشد؛ اگر چیزی عوض نمی‌شود، آن پیشنهاد را حذف کن.",
+  });
+
+export const editorOutputSchema = z.object({
+  suggestions: z
+    .array(editSuggestionDraftSchema)
+    .max(SUGGESTION_MAX, { message: `حداکثر ${SUGGESTION_MAX} پیشنهاد بده؛ فقط مهم‌ترین‌ها را نگه دار.` })
+    // شناسه را کد می‌سازد، نه مدل: مدل در ساختن شناسه‌ی یکتا قابل‌اعتماد نیست، و صفحه‌ی ویراستار برای
+    // تیک هر پیشنهاد یک شناسه‌ی پایدار لازم دارد.
+    .transform((suggestions) => suggestions.map((suggestion) => ({ id: crypto.randomUUID(), ...suggestion }))),
+});
+
+// Fails to compile if a suggestion in the response ever drifts from EditSuggestion in src/agents/editorRules.ts.
+export const suggestionMatchesRules: Same<z.output<typeof editorOutputSchema>["suggestions"][number], EditSuggestion> =
+  true;
+
 // The agents the route accepts. A role is added here together with its prompt in prompts/ and its
 // sample in fixtures/; runAgent fails to compile until all three exist.
 export const agentSchemas = {
@@ -240,6 +298,7 @@ export const agentSchemas = {
   idea: ideaOutputSchema,
   script: scriptOutputSchema,
   writer: writerOutputSchema,
+  editor: editorOutputSchema,
 } as const;
 
 export type AgentRole = keyof typeof agentSchemas;
@@ -273,6 +332,11 @@ export const agentInputs: Partial<Record<AgentRole, InputStep>> = {
   writer: inputStep(writerInputSchema, ({ idea, script }) => ({
     idea,
     script: { hook: script.hooks[script.chosenHook ?? 0], sections: script.sections, cta: script.cta },
+  })),
+  // فقط بخش‌های گفتنی و دیدنی، هر کدام با کلیدی که مدل در part برمی‌گرداند؛ صفحه‌ی ویراستار با همان
+  // scriptParts در src/agents/editorRules.ts هر کلید را به همان جای سناریو برمی‌گرداند.
+  editor: inputStep(editorInputSchema, ({ script }) => ({
+    parts: Object.fromEntries(scriptParts(script).map(({ key, text }) => [key, text])),
   })),
 };
 
