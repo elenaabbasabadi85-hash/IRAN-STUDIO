@@ -2,7 +2,14 @@
 import assert from "node:assert/strict";
 import demoScript from "../../fixtures/script.json" with { type: "json" };
 import sample from "../../fixtures/editor.json" with { type: "json" };
-import { applySuggestions, foreignLetters, partPlace, scriptParts, usableSuggestions } from "./editorRules.ts";
+import {
+  applySuggestions,
+  changesNumberWords,
+  foreignLetters,
+  partPlace,
+  scriptParts,
+  usableSuggestions,
+} from "./editorRules.ts";
 
 const script = {
   hooks: ["قلاب اول", "قلاب دوم که انتخاب شده", "قلاب سوم"],
@@ -63,6 +70,27 @@ const suggestion = (part, from, to) => ({ id: `${part}:${from}`, part, from, to,
   const kept = suggestion("text-2", "10 تا ویدیو می‌دهد", "10 تا ویدیو می‌ده");
   assert.deepEqual(usableSuggestions(script, [kept]), [kept]);
   assert.equal(applySuggestions(script, [kept]).sections[1].text, "این کانال هر ماه 10 تا ویدیو می‌ده و 5 تا شورت.");
+}
+
+// Each run of digits is compared on its own and in order: joining or splitting numbers is a change too.
+{
+  const numbers = { ...script, cta: "۲ ۳ بار و 1,500 نفر دنبال کن." };
+  const joined = [suggestion("cta", "۲ ۳ بار", "۲۳ بار"), suggestion("cta", "1,500 نفر", "1500 نفر")];
+  assert.deepEqual(usableSuggestions(numbers, joined), []);
+  const keepsDigits = suggestion("cta", "1,500 نفر دنبال کن", "1,500 نفر دنبالش کن");
+  assert.deepEqual(usableSuggestions(numbers, [keepsDigits]), [keepsDigits]);
+}
+
+// Number words and time units that change are flagged; tone changes and look-alike words are not.
+{
+  assert.equal(changesNumberWords("سه نکته", "چهار نکته"), true);
+  assert.equal(changesNumberWords("۱۰ دقیقه", "۱۰ ثانیه"), true);
+  assert.equal(changesNumberWords("سه‌تا", "چهار‌تا"), true);
+  assert.equal(changesNumberWords("یک ساعت", "یه ساعت"), false);
+  assert.equal(changesNumberWords("می‌دهد", "می‌ده"), false);
+  assert.equal(changesNumberWords("صدا", "صدای"), false);
+  assert.equal(changesNumberWords("خبر خوب این‌که", "خبر خوب اینه که"), false);
+  for (const { from, to } of sample.suggestions) assert.equal(changesNumberWords(from, to), false, from);
 }
 
 // Of two overlapping suggestions the first is kept; two separate ones in one part are both applied.
