@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Surface } from "@/components/ui/Surface";
 import type { IdeaCard, Project, Script } from "@/core/types";
 import { getProject, updateProject } from "@/storage/db";
+import { sameScript } from "./editor/editorDraft";
 import { LengthSummary } from "./LengthSummary";
 import { ScriptEditor } from "./ScriptEditor";
 import { checkScript, fieldOrder, requestScript, textsDiffer, type FieldErrors, type FieldKey } from "./scriptDraft";
@@ -29,6 +30,9 @@ export function ScriptClient({ projectId }: { projectId: string }) {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [draft, setDraft] = useState<Script | null>(null);
   const [base, setBase] = useState<Base | null>(null);
+  // The stored script this page last read or wrote. Unlike base, it stays the stored one while a new
+  // script from the agent is open, so a change made elsewhere (such as on the editor page) shows up.
+  const [seen, setSeen] = useState<Script | null>(null);
   // True while the draft is a new script from the agent that is not approved yet.
   const [fresh, setFresh] = useState(false);
   const [demo, setDemo] = useState(false);
@@ -40,6 +44,29 @@ export function ScriptClient({ projectId }: { projectId: string }) {
   // Unique per instance: Next keeps pages it navigated away from hidden in the document.
   const formId = useId();
 
+  // Runs each time the page is shown, with the latest draft: useEffectEvent always sees the newest
+  // state, while the effect below runs only when the page is shown, not on every edit.
+  // چرا سناریوی ذخیره‌شده جای پیش‌نویس می‌نشیند؟ اگر ویراستار (یا زبانه‌ی دیگری) سناریو را عوض کرده و
+  // پیش‌نویس هیچ ویرایش تأییدنشده‌ای ندارد، چیزی از دست نمی‌رود؛ ولی تأیید متن قدیمی بی‌صدا تغییرهای
+  // ویراستار را پاک می‌کرد. پیش‌نویسی که ویرایش دارد هرگز عوض نمی‌شود؛ فقط یک خط کنار دکمه‌ی تأیید می‌آید.
+  const showStored = useEffectEvent((saved: Script) => {
+    const stored: Base = { script: saved, edited: saved.edited ?? false };
+    if (!draft || !base) {
+      setDraft(saved);
+      setBase(stored);
+      setSeen(saved);
+      return;
+    }
+    if (seen && sameScript(saved, seen)) return;
+    // Choosing another hook is not an edit, as for the confirm dialog: it is quick to redo.
+    if (!fresh && !textsDiffer(draft, base.script)) {
+      setDraft(saved);
+      setBase(stored);
+      setSeen(saved);
+      setErrors({});
+    }
+  });
+
   useEffect(() => {
     let active = true;
     getProject(projectId)
@@ -50,13 +77,9 @@ export function ScriptClient({ projectId }: { projectId: string }) {
           return;
         }
         setLoad({ kind: "ready", project });
-        // This runs again each time the page is shown (Activity), so the saved script only fills an
-        // empty page and never replaces edits that are not approved yet.
-        const saved = project.script;
-        if (saved) {
-          setDraft((current) => current ?? saved);
-          setBase((current) => current ?? { script: saved, edited: saved.edited ?? false });
-        }
+        // This runs again each time the page is shown (Activity): the saved script fills an empty page,
+        // or replaces a draft with no unapproved edits when it changed elsewhere (see showStored).
+        if (project.script) showStored(project.script);
       })
       .catch(() => {
         if (active) setLoad({ kind: "error" });
@@ -123,6 +146,8 @@ export function ScriptClient({ projectId }: { projectId: string }) {
   const approvedIdea: IdeaCard = idea;
   const generating = generate.kind === "loading";
   const saving = save.kind === "saving";
+  // The stored script changed since this page last read or wrote it, and the draft was kept (showStored).
+  const changedElsewhere = project.script !== undefined && (!seen || !sameScript(project.script, seen));
 
   // چرا با دکمه و نه خودکار هنگام باز شدن صفحه؟ هر درخواست از سهمیه‌ی مدل کم می‌کند و ممکن است تا دو
   // دقیقه طول بکشد؛ کسی که فقط برای دیدن سناریوی قبلی‌اش آمده نباید هزینه‌ای بدهد.
@@ -197,10 +222,13 @@ export function ScriptClient({ projectId }: { projectId: string }) {
       // باشد نشان می‌دهد و steps.script را نمی‌سنجد. پس پیش‌نویس تا تأیید فقط در همین صفحه می‌ماند.
       const edited = base.edited || textsDiffer(checked.script, base.script);
       const script: Script = { ...checked.script, edited };
-      const steps: Project["steps"] = { ...current.steps, script: "approved" };
+      // چرا قدم ویراستار خالی می‌شود؟ ویراستاری قبلی برای متن قبلی تأیید شده بود؛ سناریوی تازه‌تأییدشده
+      // متن دیگری است و دوباره بازبینی لازم دارد، حتی اگر فقط کمی عوض شده باشد.
+      const steps: Project["steps"] = { ...current.steps, script: "approved", editor: "empty" };
       await updateProject(project.id, { script, steps });
       setDraft(script);
       setBase({ script, edited });
+      setSeen(script);
       setFresh(false);
       setLoad({ kind: "ready", project: { ...current, script, steps } });
       setSave({ kind: "saved" });
@@ -254,11 +282,17 @@ export function ScriptClient({ projectId }: { projectId: string }) {
               <Button type="submit" variant="primary" loading={saving} disabled={generating}>
                 {t.form.approve}
               </Button>
+              <p role="status">{changedElsewhere ? t.form.storedChanged : ""}</p>
               <p role="status">{save.kind === "saved" ? t.form.saved : ""}</p>
               {save.kind === "saved" && (
-                <Button variant="ghost" size="sm" href={`/studio/${project.id}`} className="-ms-4">
-                  {t.projectPage}
-                </Button>
+                <div className="-ms-4 flex flex-wrap gap-2">
+                  <Button variant="ghost" size="sm" href={`/studio/${project.id}`}>
+                    {t.projectPage}
+                  </Button>
+                  <Button variant="ghost" size="sm" href={`/studio/${project.id}/script/editor`}>
+                    {t.editorPage}
+                  </Button>
+                </div>
               )}
               {save.kind === "error" && <p role="alert">{save.message}</p>}
               {errors.form && <p role="alert">{errors.form}</p>}
