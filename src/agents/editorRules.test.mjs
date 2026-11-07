@@ -25,6 +25,9 @@ const script = {
 /** @param {string} part @param {string} from @param {string} to */
 const suggestion = (part, from, to) => ({ id: `${part}:${from}`, part, from, to, reason: "دلیل" });
 
+/** True when the suggestion is usable in a cta that is `text`, by default just its `from`. @param {string} from @param {string} to @param {string} [text] */
+const usable = (from, to, text = from) => usableSuggestions({ ...script, cta: text }, [suggestion("cta", from, to)]).length === 1;
+
 // The model sees the chosen hook (or the first one), each section's title and text, then the cta.
 {
   const parts = scriptParts(script);
@@ -81,6 +84,50 @@ const suggestion = (part, from, to) => ({ id: `${part}:${from}`, part, from, to,
   assert.deepEqual(usableSuggestions(numbers, [keepsDigits]), [keepsDigits]);
 }
 
+// A number keeps its signs: a minus, its separators and a percent sign. «منفی» and «درصد» are the same signs,
+// and a dash or full stop that is not part of a number is not compared.
+{
+  const dropped = [
+    ["۵٪ تخفیف", "۵ تخفیف"],
+    ["-۳ درجه", "۳ درجه"],
+    ["(-۳)", "(۳)"],
+    ["۲٫۵", "۲/۵"],
+    ["2.5", "2,5"],
+    ["1,500", "1500"],
+    ["۱۴۰۵/۰۸/۱۶", "۱۴۰۵/۸/۱۶"],
+    ["۵ ٪", "۵"],
+    ["\u2212۳ درجه", "۳ درجه"],
+  ];
+  for (const [from, to] of dropped) assert.equal(usable(from, to), false, `${from} → ${to}`);
+  const kept = [
+    ["۳-۴ دقیقه", "۳ تا ۴ دقیقه"],
+    ["کووید-۱۹", "کووید ۱۹"],
+    ["۵٪ تخفیف", "۵ درصد تخفیف"],
+    ["5%", "5٪"],
+    ["-۳ درجه", "منفی ۳ درجه"],
+    ["سال ۱۴۰۵.", "سال ۱۴۰۵"],
+    ["۵ ٪", "۵٪"],
+    ["\u2212۳ درجه", "-۳ درجه"],
+  ];
+  // Kept and with no warning, so the card starts ticked.
+  for (const [from, to] of kept) {
+    assert.equal(usable(from, to), true, `${from} → ${to}`);
+    assert.equal(changesNumberWords(from, to), false, `${from} → ${to}`);
+  }
+}
+
+// Numbers are compared in the whole part, before and after the change: a `from` may end right next to a digit.
+{
+  const discount = "این ماه ۵ درصد تخفیف داریم";
+  assert.equal(usable("درصد تخفیف", "تخفیف", discount), false);
+  assert.equal(usable("هوا منفی", "هوا", "هوا منفی ۳ درجه است"), false);
+  assert.equal(usable("1,", "1", "قیمت 1,500 تومنه"), false);
+  const withDiscount = { ...script, cta: discount };
+  assert.deepEqual(applySuggestions(withDiscount, [suggestion("cta", "درصد تخفیف", "تخفیف")]), withDiscount);
+  // Alone, «-۱۹» looks like a minus; in its part the dash comes after a letter, so it is a hyphen.
+  assert.equal(usable("-۱۹ همه\u200Cگیر", "۱۹ همه\u200Cگیر", "کرونا یا کووید-۱۹ همه\u200Cگیر شد"), true);
+}
+
 // Number words and time units that change are flagged; tone changes and look-alike words are not.
 {
   assert.equal(changesNumberWords("سه نکته", "چهار نکته"), true);
@@ -91,6 +138,26 @@ const suggestion = (part, from, to) => ({ id: `${part}:${from}`, part, from, to,
   assert.equal(changesNumberWords("صدا", "صدای"), false);
   assert.equal(changesNumberWords("خبر خوب این‌که", "خبر خوب اینه که"), false);
   for (const { from, to } of sample.suggestions) assert.equal(changesNumberWords(from, to), false, from);
+}
+
+// A number word written together with «تا» counts too, also when its final «ت» and the «ت» of «تا» are one.
+{
+  assert.equal(changesNumberWords("دوتا", "چهارتا"), true);
+  assert.equal(usable("دوتا", "چهارتا"), true, "only a warning");
+  assert.equal(changesNumberWords("هفتا", "هشتا"), true);
+  // «هشتاد» is still «هشتاد», never «هشت».
+  assert.equal(changesNumberWords("هشتاد", "هفتاد"), true);
+  assert.equal(changesNumberWords("هشتاد", "هشتا"), true);
+  const same = [
+    ["دوتا", "دو تا"],
+    ["شیشتا", "شش\u200Cتا"],
+    ["هفتا", "هفت\u200Cتا"],
+    ["بیستا", "بیست تا"],
+    ["شصتا", "شصت\u200Cتا"],
+  ];
+  for (const [from, to] of same) assert.equal(changesNumberWords(from, to), false, `${from} → ${to}`);
+  // «دوتایی» does not end in «تا», so neither side is counted.
+  assert.equal(changesNumberWords("دوتایی", "چهارتایی"), false);
 }
 
 // Of two overlapping suggestions the first is kept; two separate ones in one part are both applied.
