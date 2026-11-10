@@ -1,0 +1,132 @@
+/*
+ * Backdrop of the home page hero. Phase A: static, nothing moves yet.
+ * Colours come from tokens.css only.
+ *
+ * This is a plain (global) stylesheet, imported by HeroBackdrop.tsx: the project's Turbopack rule
+ * sends every *.css file through the Tailwind loader as global CSS, so CSS Modules do not work
+ * here. Every class is prefixed `hero-bd-` to keep the styles to this one component.
+ *
+ * Contrast: REC (live red, 4.50) and the muted line (concrete, 4.96) have no room for a lighter
+ * background. So the artwork lives only in the strip to the left of the hero's text column and
+ * fades to plain navy before it reaches the text and before the bottom of the hero. Behind the
+ * text the page stays plain navy, and every ratio in tokens.css still holds.
+ */
+
+.hero-bd {
+  /* Mirror the hero layout in src/app/page.tsx: half of max-w-6xl, and max-w-3xl plus the sm:px-8 gutter. */
+  --hero-bd-half-container: 36rem;
+  --hero-bd-text-column: 50rem;
+
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Below 64rem there is no free strip beside the text, so the hero stays plain navy. */
+.hero-bd-art {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .hero-bd-art {
+    display: block;
+    position: absolute;
+    inset-block: 0;
+    /* The left edge is the inline end in RTL: the side the text does not start from. */
+    left: 0;
+    /* From the left edge of the page to the left edge of the text column. */
+    width: max(0px, calc(50% + min(50%, var(--hero-bd-half-container)) - var(--hero-bd-text-column)));
+    overflow: hidden;
+    background:
+      radial-gradient(
+        120% 65% at 0% 10%,
+        color-mix(in srgb, var(--brand-denim) 80%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        95% 45% at 8% 74%,
+        color-mix(in srgb, var(--brand-denim) 45%, transparent),
+        transparent 72%
+      );
+  }
+
+  /* Plain navy at the right edge (where the text begins) and at the bottom of the hero. */
+  .hero-bd-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, transparent 52%, var(--brand-navy)),
+      linear-gradient(to bottom, transparent 58%, var(--brand-navy));
+  }
+}
+
+.hero-bd-waves {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-bd-ribbon-top {
+  fill: url(#hero-bd-ribbon-top-fill);
+}
+
+.hero-bd-ribbon-bottom {
+  fill: url(#hero-bd-ribbon-bottom-fill);
+}
+
+.hero-bd-ribbon-clear {
+  stop-color: var(--brand-denim);
+  stop-opacity: 0;
+}
+
+.hero-bd-ribbon-lit {
+  stop-color: var(--brand-denim);
+  stop-opacity: 0.55;
+}
+
+/* Thin gold lines: the width stays the same however the drawing is scaled. */
+.hero-bd-line,
+.hero-bd-halo {
+  fill: none;
+  stroke: url(#hero-bd-streak);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.hero-bd-line {
+  stroke-width: 1.5px;
+}
+
+.hero-bd-line-faint {
+  stroke-width: 1px;
+  opacity: 0.6;
+}
+
+/* A wide, faint copy under a bright line stands in for a glow, without an SVG blur filter. */
+.hero-bd-halo {
+  stroke-width: 8px;
+  opacity: 0.1;
+}
+
+.hero-bd-streak-dim {
+  stop-color: var(--brand-gold);
+  stop-opacity: 0.2;
+}
+
+.hero-bd-streak-gold {
+  stop-color: var(--brand-gold);
+  stop-opacity: 0.9;
+}
+
+.hero-bd-streak-hot {
+  stop-color: color-mix(in srgb, var(--brand-gold), var(--brand-cream) 55%);
+}
+
+.hero-bd-streak-end {
+  stop-color: var(--brand-gold);
+  stop-opacity: 0;
+}
