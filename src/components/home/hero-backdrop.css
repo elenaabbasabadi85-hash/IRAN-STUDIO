@@ -1,36 +1,44 @@
 /*
- * Backdrop of the home page hero. Phase A: static, nothing moves yet.
- * Colours come from tokens.css only.
+ * Backdrop of the home page hero: a navy-to-denim glow, drifting gold wave lines and a floating
+ * play logo. Colours come from tokens.css only.
  *
  * This is a plain (global) stylesheet, imported by HeroBackdrop.tsx: the project's Turbopack rule
  * sends every *.css file through the Tailwind loader as global CSS, so CSS Modules do not work
- * here. Every class is prefixed `hero-bd-` to keep the styles to this one component.
+ * here. Every class and keyframe is prefixed `hero-bd-` to keep the styles to this one component.
  *
  * Contrast: REC (live red, 4.50) and the muted line (concrete, 4.96) have no room for a lighter
- * background. So the artwork lives only in the strip to the left of the hero's text column and
- * fades to plain navy before it reaches the text and before the bottom of the hero. Behind the
- * text the page stays plain navy, and every ratio in tokens.css still holds.
+ * background. So all the artwork (waves, logo, rings, glow) lives only in the strip to the left of
+ * the hero's text column, and the waves fade to plain navy before they reach the text and before
+ * the bottom of the hero. Behind the text the page stays plain navy, and every ratio in tokens.css
+ * still holds.
+ *
+ * Motion: every animation is inside the `prefers-reduced-motion: no-preference` block at the end.
+ * With reduced motion the backdrop is a still picture: waves at rest, logo in place, no highlight.
  */
 
 .hero-bd {
   /* Mirror the hero layout in src/app/page.tsx: half of max-w-6xl, and max-w-3xl plus the sm:px-8 gutter. */
   --hero-bd-half-container: 36rem;
   --hero-bd-text-column: 50rem;
+  --hero-bd-hot: color-mix(in srgb, var(--brand-gold), var(--brand-cream) 55%);
 
   position: absolute;
   inset: 0;
   z-index: -1;
   overflow: hidden;
+  /* Inherited, so no decorative layer below can take a click or a hover. */
   pointer-events: none;
 }
 
-/* Below 64rem there is no free strip beside the text, so the hero stays plain navy. */
-.hero-bd-art {
+/* Below 64rem there is no free strip beside the text, so the hero stays plain navy (no waves, no logo). */
+.hero-bd-art,
+.hero-bd-stage {
   display: none;
 }
 
 @media (min-width: 64rem) {
-  .hero-bd-art {
+  .hero-bd-art,
+  .hero-bd-stage {
     display: block;
     position: absolute;
     inset-block: 0;
@@ -39,6 +47,9 @@
     /* From the left edge of the page to the left edge of the text column. */
     width: max(0px, calc(50% + min(50%, var(--hero-bd-half-container)) - var(--hero-bd-text-column)));
     overflow: hidden;
+  }
+
+  .hero-bd-art {
     background:
       radial-gradient(
         120% 65% at 0% 10%,
@@ -61,6 +72,30 @@
       linear-gradient(to right, transparent 52%, var(--brand-navy)),
       linear-gradient(to bottom, transparent 58%, var(--brand-navy));
   }
+
+  /* The logo sizes itself from the strip's width (cqw), so it always fits beside the text. */
+  .hero-bd-stage {
+    container-type: inline-size;
+  }
+}
+
+/* ---------- Waves ---------- */
+
+/* Holds the gradients the wave layers share; it draws nothing itself. */
+.hero-bd-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/*
+ * One layer per wave, so each can drift on its own with a transform and nothing is repainted.
+ * The paths run 20 units past the drawing on every side and the SVGs do not clip, so a drifting
+ * layer never shows an edge. Keep the drift in the motion block under about 15px in total.
+ */
+.hero-bd-wave {
+  position: absolute;
+  inset: 0;
 }
 
 .hero-bd-waves {
@@ -68,6 +103,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  overflow: visible;
 }
 
 .hero-bd-ribbon-top {
@@ -123,10 +159,266 @@
 }
 
 .hero-bd-streak-hot {
-  stop-color: color-mix(in srgb, var(--brand-gold), var(--brand-cream) 55%);
+  stop-color: var(--hero-bd-hot);
 }
 
 .hero-bd-streak-end {
   stop-color: var(--brand-gold);
   stop-opacity: 0;
+}
+
+/*
+ * The highlight that travels along the top line: one short dash on a path of length 1.
+ * Hidden at rest; it only shows while its animation runs.
+ */
+.hero-bd-glint {
+  fill: none;
+  stroke: var(--hero-bd-hot);
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-dasharray: 0.05 1;
+  stroke-dashoffset: 0.05;
+  opacity: 0;
+}
+
+/* ---------- Logo ---------- */
+
+/* A red rounded rectangle with the app's own play triangle: not the logo of any platform. */
+.hero-bd-logo {
+  position: absolute;
+  left: 44%;
+  top: 9.5rem;
+  width: 7rem;
+  width: clamp(4.5rem, 30cqw, 10.5rem);
+  aspect-ratio: 10 / 7;
+  translate: -50% -50%;
+}
+
+.hero-bd-logo-float,
+.hero-bd-logo-body,
+.hero-bd-logo-side,
+.hero-bd-logo-face {
+  position: absolute;
+  inset: 0;
+}
+
+/* Soft and wide rather than bright: it ends well inside the strip. */
+.hero-bd-logo-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 280%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--brand-gold) 20%, transparent),
+    color-mix(in srgb, var(--brand-gold) 7%, transparent) 48%,
+    transparent
+  );
+}
+
+.hero-bd-logo-body {
+  transform: perspective(48rem) rotateY(20deg) rotateX(8deg) rotate(-7deg);
+}
+
+/* The same radius on both axes of the 10:7 rectangle. */
+.hero-bd-logo-side,
+.hero-bd-logo-face {
+  border-radius: 17% / 24.3%;
+}
+
+/* A darker copy, offset down and to the left, reads as the thickness of the slab. */
+.hero-bd-logo-side {
+  translate: -4% 6%;
+  background: color-mix(in srgb, var(--brand-signal-red) 55%, var(--brand-navy));
+}
+
+.hero-bd-logo-face {
+  display: grid;
+  place-items: center;
+  color: var(--brand-cream);
+  /* Gloss: a light sheen on the upper half, a shade at the bottom, over a live-to-signal red. */
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--brand-cream) 36%, transparent), transparent 48%),
+    linear-gradient(to top, color-mix(in srgb, var(--brand-navy) 30%, transparent), transparent 45%),
+    linear-gradient(155deg, var(--brand-live-red), var(--brand-signal-red) 60%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-cream) 22%, transparent),
+    0 0 2.5rem color-mix(in srgb, var(--brand-gold) 20%, transparent);
+}
+
+.hero-bd-logo-play {
+  width: 40%;
+  height: auto;
+}
+
+/*
+ * Orbit rings: a circle squashed into an ellipse and tilted. Each ring is drawn twice, a full
+ * copy behind the logo and its lower half again in front, so it passes round the logo.
+ */
+.hero-bd-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+}
+
+.hero-bd-ring-inner {
+  width: 205%;
+  transform: rotate(-14deg) scaleY(0.3);
+}
+
+.hero-bd-ring-outer {
+  width: 262%;
+  transform: rotate(-9deg) scaleY(0.22);
+  opacity: 0.6;
+}
+
+.hero-bd-ring-front {
+  clip-path: inset(50% 0 0 0);
+}
+
+/* The thin line itself: a gold sweep with one brighter arc, cut down to a ring by the mask. */
+.hero-bd-ring-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    color-mix(in srgb, var(--brand-gold) 25%, transparent) 0turn,
+    color-mix(in srgb, var(--brand-gold) 80%, transparent) 0.3turn,
+    var(--hero-bd-hot) 0.36turn,
+    color-mix(in srgb, var(--brand-gold) 25%, transparent) 0.5turn,
+    color-mix(in srgb, var(--brand-gold) 55%, transparent) 0.8turn,
+    color-mix(in srgb, var(--brand-gold) 25%, transparent) 1turn
+  );
+  /* #000 here is mask alpha, not a colour on screen. */
+  -webkit-mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * Waves: a slow sine drift, each layer along its own direction and at its own pace.
+   * Transform only, so the browser moves ready-made layers and repaints nothing.
+   */
+  .hero-bd-wave {
+    animation: hero-bd-sway var(--hero-bd-cycle) infinite;
+    will-change: transform;
+  }
+
+  .hero-bd-wave-a {
+    --hero-bd-cycle: 32s;
+    --hero-bd-dx: 9px;
+    --hero-bd-dy: 11px;
+    --hero-bd-tilt: 0.45deg;
+  }
+
+  .hero-bd-wave-b {
+    --hero-bd-cycle: 24s;
+    --hero-bd-dx: -8px;
+    --hero-bd-dy: 9px;
+    --hero-bd-tilt: -0.4deg;
+  }
+
+  .hero-bd-wave-c {
+    --hero-bd-cycle: 38s;
+    --hero-bd-dx: 10px;
+    --hero-bd-dy: -10px;
+    --hero-bd-tilt: -0.4deg;
+  }
+
+  .hero-bd-wave-d {
+    --hero-bd-cycle: 21s;
+    --hero-bd-dx: -9px;
+    --hero-bd-dy: -8px;
+    --hero-bd-tilt: 0.5deg;
+  }
+
+  /* The highlight runs along the top line, then rests for the remainder of its cycle. */
+  .hero-bd-glint {
+    animation: hero-bd-glint 14s cubic-bezier(0.45, 0, 0.55, 1) 2.5s infinite;
+  }
+
+  /* Logo: fades and rises in once on load, then floats with a slight tilt. */
+  .hero-bd-logo {
+    animation: hero-bd-enter 1.1s var(--motion-ease) 0.2s backwards;
+  }
+
+  .hero-bd-logo-float {
+    --hero-bd-dx: 0px;
+    --hero-bd-dy: -0.5rem;
+    --hero-bd-tilt: 1.4deg;
+
+    animation: hero-bd-sway 9s infinite;
+    will-change: transform;
+  }
+
+  /* The brighter arc of each ring goes slowly round, the two rings in opposite directions. */
+  .hero-bd-ring-arc {
+    animation: hero-bd-orbit 30s linear infinite;
+  }
+
+  .hero-bd-ring-outer > .hero-bd-ring-arc {
+    animation-duration: 44s;
+    animation-direction: reverse;
+  }
+}
+
+/*
+ * One sine wave from rest: out to the peak easing out, back through rest easing in, and the same
+ * on the other side. It starts and ends at rest, so nothing jumps when the page loads.
+ */
+@keyframes hero-bd-sway {
+  0%,
+  50%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.61, 1, 0.88, 1);
+  }
+
+  25% {
+    transform: translate3d(var(--hero-bd-dx), var(--hero-bd-dy), 0) rotate(var(--hero-bd-tilt));
+    animation-timing-function: cubic-bezier(0.12, 0, 0.39, 0);
+  }
+
+  75% {
+    transform: translate3d(calc(var(--hero-bd-dx) * -1), calc(var(--hero-bd-dy) * -1), 0)
+      rotate(calc(var(--hero-bd-tilt) * -1));
+    animation-timing-function: cubic-bezier(0.12, 0, 0.39, 0);
+  }
+}
+
+@keyframes hero-bd-glint {
+  0% {
+    stroke-dashoffset: 0.05;
+    opacity: 0;
+  }
+
+  6%,
+  36% {
+    opacity: 0.9;
+  }
+
+  46%,
+  100% {
+    stroke-dashoffset: -0.8;
+    opacity: 0;
+  }
+}
+
+@keyframes hero-bd-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.25rem, 0) scale(0.9);
+  }
+}
+
+@keyframes hero-bd-orbit {
+  to {
+    transform: rotate(1turn);
+  }
 }
