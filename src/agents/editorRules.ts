@@ -59,16 +59,42 @@ export function partPlace(key: string): PartPlace | null {
   return { kind: key as "hook" | "cta" };
 }
 
-/** The runs of digits of a text, in order, in any script: «1,500 و ۲» gives ["1", "500", "۲"]. */
-function digitRuns(text: string): string[] {
-  return text.match(/\p{Nd}+/gu) ?? [];
+// چرا شکل یکسان‌شده؟ فقط برای سنجیدن ساخته می‌شود و هرگز نشان داده یا ذخیره نمی‌شود: متن یوتیوبر همان‌طور
+// که نوشته شده می‌ماند و فقط دو طرف یک‌جور خوانده می‌شوند. چرا «درصد» و «منفی» همان نشانه‌اند؟ سناریو گفته
+// می‌شود و مدل ویراستار اغلب شکل گفتاری را پیشنهاد می‌کند («۵٪» به «۵ درصد»، «-۳» به «منفی ۳»)؛ عدد همان
+// است و چنین پیشنهادی نباید کنار برود.
+/** One form for each sign of a number, for comparison only: «منفی ۳ و ۵ درصد» gives «-۳ و ۵٪», «5 %» gives «5٪». */
+function canonical(text: string): string {
+  return (
+    text
+      .replace(/\u2212/gu, "-")
+      .replace(/%/gu, "٪")
+      // The whole word «منفی», then spaces or half-spaces, right before a digit.
+      .replace(/(?<![\p{L}\p{M}])منفی[\s\u200C]*(?=\p{Nd})/gu, "-")
+      // A digit, then spaces or half-spaces, then «٪» or «درصد».
+      .replace(/(\p{Nd})[\s\u200C]*(?:٪|درصد)/gu, "$1٪")
+  );
 }
 
-/** True when both texts have the same runs of digits, in the same order, character by character. */
-function sameDigits(from: string, to: string): boolean {
-  const a = digitRuns(from);
-  const b = digitRuns(to);
-  return a.length === b.length && a.every((run, i) => run === b[i]);
+// چرا خط تیره‌ی بین دو رقم منفی نیست؟ «۳-۴ دقیقه» یعنی «۳ تا ۴ دقیقه» و در «کووید-۱۹» خط تیره بخشی از نام
+// است؛ پس «-» فقط وقتی منفی است که پیش از آن حرف، اعراب یا رقم نباشد. جداکننده هم فقط وقتی جزو عدد است که
+// رقمی بعدش بیاید: نقطه‌ی «سال ۱۴۰۵.» پایان جمله است.
+/** A number: an optional minus, digits, more digits after each ٫ ٬ . , or /, then an optional «٪». */
+const NUMBER = /(?:(?<![\p{L}\p{M}\p{N}])-)?\p{Nd}+(?:[٫٬.,/]\p{Nd}+)*٪?/gu;
+
+// What this does not catch: «،» between digits («۲،۵۰۰» is two numbers here, though normalize keeps it as
+// one), a percent sign before the number («٪۵»), or two suggestions that change a number only together
+// while each keeps it on its own.
+/** The numbers of a text, in order, with their signs, in the canonical form: «1,500 و ۲» gives ["1,500", "۲"]. */
+function digitRuns(text: string): string[] {
+  return canonical(text).match(NUMBER) ?? [];
+}
+
+/** True when both texts have the same numbers, signs included, in the same order, character by character. */
+function sameDigits(a: string, b: string): boolean {
+  const x = digitRuns(a);
+  const y = digitRuns(b);
+  return x.length === y.length && x.every((run, i) => run === y[i]);
 }
 
 type Placeable = Pick<EditSuggestion, "part" | "from" | "to">;
@@ -79,10 +105,6 @@ function place<T extends Placeable>(script: SpokenScript, suggestions: T[]) {
   const placed: { suggestion: T; start: number; end: number }[] = [];
   for (const suggestion of suggestions) {
     const { part, from, to } = suggestion;
-    // رقم‌ها هرگز عوض نمی‌شوند (تصمیم تیم)، حتی فقط شکلشان («10» به «۱۰»): عدد غلط در ویدیو اعتبار
-    // یوتیوبر را می‌برد و مدل همیشه به پرامپت گوش نمی‌دهد، پس کد هم می‌سنجد. هر دنباله‌ی رقم جدا و به
-    // ترتیب سنجیده می‌شود، پس چسباندن یا جدا کردن عددها («۲ ۳» به «۲۳»، «1,500» به «1500») هم رد می‌شود.
-    if (!sameDigits(from, to)) continue;
     const text = texts.get(part);
     if (text === undefined) continue;
     // چرا دقیقاً یک بار؟ اگر پیدا نشود، مدل نقل‌قول را عوض کرده؛ اگر دو بار پیدا شود، نمی‌دانیم منظور
@@ -90,6 +112,12 @@ function place<T extends Placeable>(script: SpokenScript, suggestions: T[]) {
     const start = text.indexOf(from);
     if (start === -1 || text.indexOf(from, start + 1) !== -1) continue;
     const end = start + from.length;
+    // رقم‌ها هرگز عوض نمی‌شوند (تصمیم تیم)، حتی فقط شکلشان («10» به «۱۰»): عدد غلط در ویدیو اعتبار
+    // یوتیوبر را می‌برد و مدل همیشه به پرامپت گوش نمی‌دهد، پس کد هم می‌سنجد. هر عدد با نشانه‌هایش (منفی،
+    // جداکننده‌ها، ٪) جدا و به ترتیب سنجیده می‌شود، پس چسباندن یا جدا کردن عددها («۲ ۳» به «۲۳») و عوض کردن
+    // نشانه‌ها («1,500» به «1500»، «۵٪» به «۵») هم رد می‌شود. چرا کل بخش و نه فقط from و to؟ from ممکن است
+    // درست کنار رقم تمام شود: «درصد تخفیف» به «تخفیف» رقمی ندارد، ولی در «۵ درصد تخفیف» عدد را «۵» می‌کند.
+    if (!sameDigits(text, text.slice(0, start) + to + text.slice(end))) continue;
     // دو تغییر روی یک تکه با هم جور نمی‌شوند؛ اولی می‌ماند.
     if (placed.some((other) => other.suggestion.part === part && other.start < end && start < other.end)) continue;
     placed.push({ suggestion, start, end });
@@ -97,7 +125,7 @@ function place<T extends Placeable>(script: SpokenScript, suggestions: T[]) {
   return placed;
 }
 
-/** The suggestions code can place: same runs of digits, `from` found exactly once in its part, no overlap with an earlier one. */
+/** The suggestions code can place: `from` found exactly once in its part, the same numbers in the part before and after the change, no overlap with an earlier one. */
 export function usableSuggestions<T extends Placeable>(script: SpokenScript, suggestions: T[]): T[] {
   return place(script, suggestions).map(({ suggestion }) => suggestion);
 }
@@ -166,9 +194,9 @@ const SPOKEN: Record<string, string> = {
 // یک کلمه: حرف، اعراب و نیم‌فاصله، پس «می‌ده» یک کلمه است و هیچ‌وقت «ده» خوانده نمی‌شود.
 const WORD = /[\p{L}\p{M}\u200C]+/gu;
 
-// What this does not catch: a number written without its half-space («دوتا»), other units («دهه»،
-// «درصد»), or a number word changed into digits (digits are their own rule). «سه‌شنبه» counts as «سه»,
-// and «نه» (no) as «نه» (nine): a false warning is fine, the user decides.
+// What this does not catch: a number word glued to «تا» with more after it («دوتایی»، «دوتاش»), other
+// units («دهه»، «درصد»), or a number word changed into digits (digits are their own rule). «سه‌شنبه»
+// counts as «سه», «یکتا» as «یک», and «نه» (no) as «نه» (nine): a false warning is fine, the user decides.
 /** The number words and time units of a text, in their written form, sorted: «یه ساعت و سه‌تا» gives ["ساعت", "سه", "یک"]. */
 function numberWords(text: string): string[] {
   const found: string[] = [];
@@ -176,7 +204,18 @@ function numberWords(text: string): string[] {
     // A listed word, or a listed word followed by a half-space and more letters («سه‌تا»، «دقیقه‌ای»).
     const head = word.split("\u200C")[0];
     const written = SPOKEN[head] ?? head;
-    if (COUNTED.has(written)) found.push(written);
+    if (COUNTED.has(written)) {
+      found.push(written);
+    } else if (written.endsWith("تا")) {
+      // Or a number word written together with «تا», with nothing after it («دوتا»، «شیشتا»); only
+      // NUMBER_WORDS, not ordinals or time units.
+      // چرا stem + «ت» هم امتحان می‌شود؟ در «هفتا» «ت» آخر «هفت» و «ت» اول «تا» یکی نوشته شده‌اند؛ پس
+      // «هفتا» همان «هفت تا» است. «هشتاد» این‌جا نمی‌رسد، چون خودش در فهرست است.
+      const stem = written.slice(0, -"تا".length);
+      const number = SPOKEN[stem] ?? stem;
+      const counted = [number, `${number}ت`].find((candidate) => NUMBER_WORDS.includes(candidate));
+      if (counted) found.push(counted);
+    }
   }
   return found.sort();
 }
