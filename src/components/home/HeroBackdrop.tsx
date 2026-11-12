@@ -42,12 +42,28 @@ const frameBox = {
   className: 'hero-bd-frame-art',
 } as const;
 
-// Decorative backdrop of the home page hero. In the strip to the left of the text: a
-// navy-to-denim glow, two soft ribbons, four thin gold wave lines that drift slowly, and a
-// floating play logo with gold orbit rings. Along the top and bottom edges: a thin organic frame.
-// Everything follows the mouse a little (HeroParallax). The styles, the motion (off under reduced
-// motion) and the note on text contrast are in hero-backdrop.css. The parent must be
-// `relative isolate`.
+// The compact artwork, below 64rem: one wave line in a band along the hero's top edge and one in a
+// band along its bottom edge. The box is as wide as the streak gradient and is stretched over the
+// band, so x is a share of the hero's width. The top line dips on the left, under the small logo,
+// and has climbed into the hero's top padding by the middle, well before the REC label on the right.
+const EDGE_TOP = 'M-40 62C60 86 150 78 230 50S380 10 470 16S570 30 600 22';
+const EDGE_BOTTOM = 'M-40 34C60 10 170 84 290 74S460 18 600 40';
+
+const edgeBox = {
+  viewBox: '0 0 560 100',
+  preserveAspectRatio: 'none',
+  focusable: false,
+  className: 'hero-bd-edge-art',
+} as const;
+
+// Decorative backdrop of the home page hero, in two layouts (hero-backdrop.css picks one by width).
+// Wide, from 64rem: in the strip to the left of the text, a navy-to-denim glow, two soft ribbons,
+// four thin gold wave lines that drift slowly, and a floating play logo with gold orbit rings;
+// along the top and bottom edges, a thin organic frame; everything follows the mouse a little.
+// Compact, below 64rem: two gold wave lines, one along each edge, and the same logo, small, in the
+// top left corner. HeroParallax follows the mouse and pauses the motion while the hero is off
+// screen. The styles, the motion (off under reduced motion) and the note on text contrast are in
+// hero-backdrop.css. The parent must be `relative isolate`.
 export function HeroBackdrop() {
   return (
     <HeroParallax>
@@ -115,6 +131,19 @@ export function HeroBackdrop() {
             <path d={BOTTOM_ECHO} className="hero-bd-line hero-bd-line-faint" />
           </svg>
         </div>
+      </div>
+
+      <div className="hero-bd-edge hero-bd-edge-top">
+        <svg {...edgeBox}>
+          <path d={EDGE_TOP} className="hero-bd-halo" />
+          <path d={EDGE_TOP} className="hero-bd-line" />
+        </svg>
+      </div>
+      <div className="hero-bd-edge hero-bd-edge-bottom">
+        <svg {...edgeBox}>
+          <path d={EDGE_BOTTOM} className="hero-bd-halo" />
+          <path d={EDGE_BOTTOM} className="hero-bd-line" />
+        </svg>
       </div>
 
       <div className="hero-bd-stage">

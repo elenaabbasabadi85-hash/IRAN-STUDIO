@@ -12,13 +12,21 @@
  * the text), and the frame in the hero's own top and bottom padding. Behind the text the page
  * stays plain navy, and every ratio in tokens.css still holds.
  *
+ * Two layouts. Wide, from 64rem, is everything above. Below 64rem there is no free strip beside
+ * the text, so the compact layout takes over (see "Compact"): one gold wave line along the top
+ * edge, one along the bottom, and the logo at 3.5rem in the top left corner, beside the hero's
+ * first line. It keeps to the same rule: nothing is drawn behind a line of text or a button.
+ *
  * Motion: every animation is inside the `prefers-reduced-motion: no-preference` block at the end.
  * With reduced motion the backdrop is a still picture: waves at rest, logo in place, no highlight.
+ * Only transforms and opacity move, apart from the dash offset of the one highlight in the wide
+ * layout: no blur, no filter and no path is animated. While the hero is off screen HeroParallax.tsx
+ * sets data-hero-bd-paused on the root and every animation here is paused.
  *
  * Mouse: HeroParallax.tsx writes the eased pointer position to --hero-bd-px and --hero-bd-py
  * (-1 to 1, 0 at rest). The layers below turn them into small shifts and tilts with `translate`
  * and static transforms, which add to the keyframe animations instead of replacing them. Without
- * a mouse, or with reduced motion, both stay 0.
+ * a mouse, in the compact layout, or with reduced motion, both stay 0.
  */
 
 .hero-bd {
@@ -31,6 +39,9 @@
   /* Frame bands: a little less than the hero's padding (pt-8, pb-20), so they end above and below the text. */
   --hero-bd-frame-top: 1.75rem;
   --hero-bd-frame-bottom: 4.5rem;
+  /* The hero's top padding (pt-8) and the height of its first line, the REC label (text-lg). */
+  --hero-bd-pad-top: 2rem;
+  --hero-bd-first-line: 1.75rem;
 
   position: absolute;
   inset: 0;
@@ -44,12 +55,17 @@
 @media (min-width: 40rem) {
   .hero-bd {
     --hero-bd-frame-top: 3.25rem;
+    --hero-bd-pad-top: 3.5rem;
   }
 }
 
-/* Below 64rem there is no free strip beside the text, so there are no waves and no logo, only the frame. */
+/*
+ * Below 64rem there is no free strip beside the text: the strip's waves are not drawn at all, and
+ * the logo's stage and the edge waves are laid out by the "Compact" block further down.
+ */
 .hero-bd-art,
-.hero-bd-stage {
+.hero-bd-stage,
+.hero-bd-edge {
   display: none;
 }
 
@@ -459,6 +475,87 @@
   right: calc(var(--hero-bd-band) * -0.5);
 }
 
+/* ---------- Compact (below 64rem) ---------- */
+
+/*
+ * The exact opposite of `min-width: 64rem`, so one of the two layouts applies at every width.
+ *
+ * Where the artwork may go, from the hero layout in src/app/page.tsx:
+ * - The top band is the hero's top padding plus its first line. That line is the short REC label
+ *   at the right, so the rest of the row is empty. The top wave is low on the left, has climbed
+ *   into the padding by the middle of the row, and fades out towards the right; the logo sits on
+ *   it at the left. Both end above the title.
+ * - The bottom band is inside the hero's bottom padding (pb-20), below the buttons.
+ */
+@media not all and (min-width: 64rem) {
+  /* The edge waves stand in for the frame's curves. Its corner glows stay. */
+  .hero-bd-frame-art {
+    display: none;
+  }
+
+  .hero-bd-edge {
+    display: block;
+    position: absolute;
+    inset-inline: 0;
+  }
+
+  .hero-bd-edge-top {
+    top: 0;
+    height: calc(var(--hero-bd-pad-top) + var(--hero-bd-first-line));
+  }
+
+  .hero-bd-edge-bottom {
+    bottom: 0;
+    height: var(--hero-bd-frame-bottom);
+  }
+
+  /* Stretched to the band; the path runs past both ends, so a drifting band shows no end. */
+  .hero-bd-edge-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  /* Mirrored, so the bottom line is brightest on the right and the top one on the left. */
+  .hero-bd-edge-bottom > .hero-bd-edge-art {
+    transform: scaleX(-1);
+  }
+
+  .hero-bd-stage {
+    display: block;
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Centred on the first line of the hero, at the far end from the REC label. */
+  .hero-bd-logo {
+    --hero-bd-enter-y: 0.5rem;
+
+    left: 4rem;
+    top: calc(var(--hero-bd-pad-top) + var(--hero-bd-first-line) / 2);
+    width: 3.5rem;
+    translate: -50% -50%;
+  }
+
+  /* A small logo keeps one ring and a glow that hugs it, so both end above the title. */
+  .hero-bd-ring-outer {
+    display: none;
+  }
+
+  .hero-bd-logo-glow {
+    width: 140%;
+    aspect-ratio: 7 / 5;
+  }
+
+  .hero-bd-logo-face {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--brand-cream) 22%, transparent),
+      0 0 0.75rem color-mix(in srgb, var(--brand-gold) 20%, transparent);
+  }
+}
+
 /* ---------- Motion ---------- */
 
 @media (prefers-reduced-motion: no-preference) {
@@ -527,6 +624,40 @@
     animation-duration: 44s;
     animation-direction: reverse;
   }
+
+  /*
+   * Compact: the two edge waves drift like the strip's waves, but less, so each stays inside its
+   * band, and the small logo floats half as far.
+   */
+  .hero-bd-edge {
+    animation: hero-bd-sway var(--hero-bd-cycle) infinite;
+    will-change: transform;
+  }
+
+  .hero-bd-edge-top {
+    --hero-bd-cycle: 28s;
+    --hero-bd-dx: 7px;
+    --hero-bd-dy: 2px;
+    --hero-bd-tilt: 0.2deg;
+  }
+
+  .hero-bd-edge-bottom {
+    --hero-bd-cycle: 36s;
+    --hero-bd-dx: -8px;
+    --hero-bd-dy: -3px;
+    --hero-bd-tilt: -0.25deg;
+  }
+
+  @media not all and (min-width: 64rem) {
+    .hero-bd-logo-float {
+      --hero-bd-dy: -0.25rem;
+    }
+  }
+
+  /* Off screen (set by HeroParallax.tsx): every animation of the backdrop holds its frame. */
+  .hero-bd[data-hero-bd-paused] * {
+    animation-play-state: paused;
+  }
 }
 
 /*
@@ -574,7 +705,7 @@
 @keyframes hero-bd-enter {
   from {
     opacity: 0;
-    transform: translate3d(0, 1.25rem, 0) scale(0.9);
+    transform: translate3d(0, var(--hero-bd-enter-y, 1.25rem), 0) scale(0.9);
   }
 }
 
