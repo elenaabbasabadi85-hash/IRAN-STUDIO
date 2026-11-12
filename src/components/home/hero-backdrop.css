@@ -1,19 +1,24 @@
 /*
- * Backdrop of the home page hero: a navy-to-denim glow, drifting gold wave lines and a floating
- * play logo. Colours come from tokens.css only.
+ * Backdrop of the home page hero: a navy-to-denim glow, drifting gold wave lines, a floating play
+ * logo and a thin organic frame along the top and bottom edges. Colours come from tokens.css only.
  *
  * This is a plain (global) stylesheet, imported by HeroBackdrop.tsx: the project's Turbopack rule
  * sends every *.css file through the Tailwind loader as global CSS, so CSS Modules do not work
  * here. Every class and keyframe is prefixed `hero-bd-` to keep the styles to this one component.
  *
  * Contrast: REC (live red, 4.50) and the muted line (concrete, 4.96) have no room for a lighter
- * background. So all the artwork (waves, logo, rings, glow) lives only in the strip to the left of
- * the hero's text column, and the waves fade to plain navy before they reach the text and before
- * the bottom of the hero. Behind the text the page stays plain navy, and every ratio in tokens.css
- * still holds.
+ * background. So the artwork lives only where there is no text: the waves, logo, rings and glow in
+ * the strip to the left of the hero's text column (the waves fade to plain navy before they reach
+ * the text), and the frame in the hero's own top and bottom padding. Behind the text the page
+ * stays plain navy, and every ratio in tokens.css still holds.
  *
  * Motion: every animation is inside the `prefers-reduced-motion: no-preference` block at the end.
  * With reduced motion the backdrop is a still picture: waves at rest, logo in place, no highlight.
+ *
+ * Mouse: HeroParallax.tsx writes the eased pointer position to --hero-bd-px and --hero-bd-py
+ * (-1 to 1, 0 at rest). The layers below turn them into small shifts and tilts with `translate`
+ * and static transforms, which add to the keyframe animations instead of replacing them. Without
+ * a mouse, or with reduced motion, both stay 0.
  */
 
 .hero-bd {
@@ -21,6 +26,11 @@
   --hero-bd-half-container: 36rem;
   --hero-bd-text-column: 50rem;
   --hero-bd-hot: color-mix(in srgb, var(--brand-gold), var(--brand-cream) 55%);
+  --hero-bd-px: 0;
+  --hero-bd-py: 0;
+  /* Frame bands: a little less than the hero's padding (pt-8, pb-20), so they end above and below the text. */
+  --hero-bd-frame-top: 1.75rem;
+  --hero-bd-frame-bottom: 4.5rem;
 
   position: absolute;
   inset: 0;
@@ -30,7 +40,14 @@
   pointer-events: none;
 }
 
-/* Below 64rem there is no free strip beside the text, so the hero stays plain navy (no waves, no logo). */
+/* From the sm breakpoint the hero's top padding is pt-14. */
+@media (min-width: 40rem) {
+  .hero-bd {
+    --hero-bd-frame-top: 3.25rem;
+  }
+}
+
+/* Below 64rem there is no free strip beside the text, so there are no waves and no logo, only the frame. */
 .hero-bd-art,
 .hero-bd-stage {
   display: none;
@@ -90,12 +107,34 @@
 
 /*
  * One layer per wave, so each can drift on its own with a transform and nothing is repainted.
- * The paths run 20 units past the drawing on every side and the SVGs do not clip, so a drifting
- * layer never shows an edge. Keep the drift in the motion block under about 15px in total.
+ * The paths start about 55 units off the left and top of the drawing and the SVGs do not clip, so
+ * a layer never shows an edge. Keep drift (motion block) plus mouse shift under about 40px.
+ * Each layer follows the mouse by its own depth, two of them against it.
  */
 .hero-bd-wave {
   position: absolute;
   inset: 0;
+  translate: calc(var(--hero-bd-px) * var(--hero-bd-depth-x)) calc(var(--hero-bd-py) * var(--hero-bd-depth-y));
+}
+
+.hero-bd-wave-a {
+  --hero-bd-depth-x: 6px;
+  --hero-bd-depth-y: 4px;
+}
+
+.hero-bd-wave-b {
+  --hero-bd-depth-x: -10px;
+  --hero-bd-depth-y: -5px;
+}
+
+.hero-bd-wave-c {
+  --hero-bd-depth-x: 12px;
+  --hero-bd-depth-y: 6px;
+}
+
+.hero-bd-wave-d {
+  --hero-bd-depth-x: -5px;
+  --hero-bd-depth-y: -8px;
 }
 
 .hero-bd-waves {
@@ -191,7 +230,8 @@
   width: 7rem;
   width: clamp(4.5rem, 30cqw, 10.5rem);
   aspect-ratio: 10 / 7;
-  translate: -50% -50%;
+  /* Centred on its point, and the nearest layer to the viewer: it follows the mouse the most. */
+  translate: calc(-50% + var(--hero-bd-px) * 10px) calc(-50% + var(--hero-bd-py) * 8px);
 }
 
 .hero-bd-logo-float,
@@ -218,8 +258,10 @@
   );
 }
 
+/* A fixed 3D pose, turned a few degrees towards the mouse. */
 .hero-bd-logo-body {
-  transform: perspective(48rem) rotateY(20deg) rotateX(8deg) rotate(-7deg);
+  transform: perspective(48rem) rotateY(calc(20deg + var(--hero-bd-px) * 9deg))
+    rotateX(calc(8deg - var(--hero-bd-py) * 7deg)) rotate(-7deg);
 }
 
 /* The same radius on both axes of the 10:7 rectangle. */
@@ -265,14 +307,15 @@
   translate: -50% -50%;
 }
 
+/* The mouse tips the rings a little: left and right turns them, up and down opens or flattens them. */
 .hero-bd-ring-inner {
   width: 205%;
-  transform: rotate(-14deg) scaleY(0.3);
+  transform: rotate(calc(-14deg + var(--hero-bd-px) * 2.5deg)) scaleY(calc(0.3 + var(--hero-bd-py) * 0.04));
 }
 
 .hero-bd-ring-outer {
   width: 262%;
-  transform: rotate(-9deg) scaleY(0.22);
+  transform: rotate(calc(-9deg - var(--hero-bd-px) * 2deg)) scaleY(calc(0.22 + var(--hero-bd-py) * 0.03));
   opacity: 0.6;
 }
 
@@ -296,6 +339,124 @@
   /* #000 here is mask alpha, not a colour on screen. */
   -webkit-mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
   mask-image: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+}
+
+/* ---------- Frame ---------- */
+
+/*
+ * Not a rectangle: two bands, one along the top edge and one along the bottom, each with a soft
+ * blue ribbon and thin gold curves that dip in at the corners and thin out along the middle, plus
+ * a small glow in each corner. The bands sit inside the hero's padding, clear of the text and the
+ * buttons, at every width. The drawing stays in the inner three quarters of each band, so the
+ * few pixels it moves with the mouse never take it out.
+ */
+.hero-bd-frame {
+  position: absolute;
+  inset-inline: 0;
+}
+
+.hero-bd-frame-top {
+  --hero-bd-band: var(--hero-bd-frame-top);
+
+  top: 0;
+  height: var(--hero-bd-band);
+  translate: calc(var(--hero-bd-px) * -5px) calc(var(--hero-bd-py) * -2px);
+}
+
+.hero-bd-frame-bottom {
+  --hero-bd-band: var(--hero-bd-frame-bottom);
+
+  bottom: 0;
+  height: var(--hero-bd-band);
+  translate: calc(var(--hero-bd-px) * 5px) calc(var(--hero-bd-py) * 2px);
+}
+
+/* Stretched to the band; the paths run past both ends, so a shifted band shows no end. */
+.hero-bd-frame-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hero-bd-frame-ribbon {
+  fill: url(#hero-bd-frame-ribbon-fill);
+}
+
+.hero-bd-frame-line {
+  fill: none;
+  stroke: url(#hero-bd-frame-streak);
+  stroke-width: 1.25px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.hero-bd-frame-line-faint {
+  stroke-width: 1px;
+  opacity: 0.5;
+}
+
+.hero-bd-frame-edge {
+  stop-color: var(--brand-gold);
+  stop-opacity: 0.85;
+}
+
+.hero-bd-frame-mid {
+  stop-color: var(--brand-gold);
+  stop-opacity: 0.06;
+}
+
+.hero-bd-frame-ribbon-edge {
+  stop-color: var(--brand-denim);
+  stop-opacity: 0.5;
+}
+
+.hero-bd-frame-ribbon-mid {
+  stop-color: var(--brand-denim);
+  stop-opacity: 0.1;
+}
+
+/*
+ * A soft gold glow in each corner, no larger than its band. At the top it is centred on the corner
+ * of the page. At the bottom it is half the size and centred on the band's mid-height, so it has
+ * faded out by the hero's bottom edge and leaves no straight seam above the next section.
+ */
+.hero-bd-corner {
+  position: absolute;
+  width: calc(var(--hero-bd-band) * 2);
+  aspect-ratio: 1;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--brand-gold) 30%, transparent),
+    color-mix(in srgb, var(--brand-gold) 9%, transparent) 50%,
+    transparent
+  );
+}
+
+.hero-bd-corner-left {
+  left: calc(var(--hero-bd-band) * -1);
+}
+
+.hero-bd-corner-right {
+  right: calc(var(--hero-bd-band) * -1);
+}
+
+.hero-bd-frame-top > .hero-bd-corner {
+  top: calc(var(--hero-bd-band) * -1);
+}
+
+.hero-bd-frame-bottom > .hero-bd-corner {
+  bottom: 0;
+  width: var(--hero-bd-band);
+}
+
+.hero-bd-frame-bottom > .hero-bd-corner-left {
+  left: calc(var(--hero-bd-band) * -0.5);
+}
+
+.hero-bd-frame-bottom > .hero-bd-corner-right {
+  right: calc(var(--hero-bd-band) * -0.5);
 }
 
 /* ---------- Motion ---------- */
