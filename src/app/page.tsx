@@ -56,7 +56,14 @@ export default function Home() {
 
         <ul className="grid gap-4 md:grid-cols-2">
           {t.flow.entries.map((entry, index) => (
-            <li key={entry.title} className="relative flex flex-col gap-2 p-6 ps-8 ring-1 ring-denim ring-inset">
+            <li key={entry.title} className="cut-edge flex flex-col gap-2 p-6 ps-8 pe-14">
+              {/*
+                The left edge is cut at the brand angle, like the part labels and the primary button. A ring
+                would stay square, so the thin frame is the border of the cut fill, which slants with it. The
+                fill sits 1px inside the top, bottom and left edges: on the clip edge itself, its border is lost
+                at some fractional card heights (the tablet). The bar below covers the fill's right edge.
+              */}
+              <span aria-hidden="true" className="cut-fill inset-y-px end-px border border-denim" />
               {/* Signal red is a background colour only (see globals.css), so the bar is its own element. */}
               <span
                 aria-hidden="true"
