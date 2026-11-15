@@ -1,3 +1,4 @@
+import { HeroBackdrop } from '@/components/home/HeroBackdrop';
 import { Button } from '@/components/ui/Button';
 import { RecDot } from '@/components/ui/RecDot';
 import fa from '@/i18n/fa.json';
@@ -12,31 +13,39 @@ const stepNumber = (n: number) => formatNumber(n).padStart(2, '۰');
 // button (start a project) and a side path to the subscription page, then the workflow.
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full text-pretty max-w-6xl flex-1 flex-col gap-20 px-4 py-8 sm:px-8 sm:py-14">
-      <section aria-labelledby="home-title" className="flex flex-col items-start gap-6">
-        <p dir="ltr" className="flex items-center gap-2 self-start font-latin-display text-lg tracking-widest text-accent">
-          <RecDot blinking />
-          {t.rec}
-        </p>
-        <h1 id="home-title">{t.name}</h1>
-        <p className="cut-edge px-6 pt-2 pb-3 pe-12 font-display text-display text-cream">
-          <span aria-hidden="true" className="cut-fill bg-signal-red" />
-          {t.slogan}
-        </p>
-        <p className="font-heading text-h3">{t.descriptor}</p>
-        <p className="max-w-3xl">{t.oneLiner}</p>
-        <p className="max-w-3xl text-muted">{t.raw}</p>
-        <div className="flex flex-wrap gap-4">
-          <Button variant="primary" size="lg" href="/studio/new">
-            {t.start}
-          </Button>
-          <Button size="lg" href="/pricing">
-            {t.seePlans}
-          </Button>
+    <main className="flex w-full flex-1 flex-col text-pretty">
+      {/* The hero spans the page so its backdrop reaches the edges; the text keeps the max-w-6xl column. */}
+      <section aria-labelledby="home-title" className="relative isolate">
+        <HeroBackdrop />
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-4 pt-8 pb-20 sm:px-8 sm:pt-14">
+          <p dir="ltr" className="flex items-center gap-2 self-start font-latin-display text-lg tracking-widest text-accent">
+            <RecDot blinking />
+            {t.rec}
+          </p>
+          <h1 id="home-title">{t.name}</h1>
+          <p className="cut-edge px-6 pt-2 pb-3 pe-12 font-display text-display text-cream">
+            <span aria-hidden="true" className="cut-fill bg-signal-red" />
+            {t.slogan}
+          </p>
+          <p className="font-heading text-h3">{t.descriptor}</p>
+          <p className="max-w-3xl">{t.oneLiner}</p>
+          <p className="max-w-3xl text-muted">{t.raw}</p>
+          <div className="flex flex-wrap gap-4">
+            <Button variant="primary" size="lg" href="/studio/new">
+              {t.start}
+            </Button>
+            <Button size="lg" href="/pricing">
+              {t.seePlans}
+            </Button>
+          </div>
         </div>
       </section>
 
-      <section id="how-it-works" aria-labelledby="flow-title" className="flex scroll-mt-8 flex-col gap-8">
+      <section
+        id="how-it-works"
+        aria-labelledby="flow-title"
+        className="mx-auto flex w-full max-w-6xl scroll-mt-8 flex-col gap-8 px-4 pb-8 sm:px-8 sm:pb-14"
+      >
         <div className="flex flex-col gap-3">
           <h2 id="flow-title">{t.flow.title}</h2>
           <p className="max-w-3xl text-muted">{t.flow.intro}</p>
